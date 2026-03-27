@@ -654,8 +654,8 @@ class SWEBenchEnvironment(Environment):
         #         regression_ok, _rout = oracle.run_tests(regression_cmd)
         #         if not regression_ok:
         #             return "TEST_FAIL"
-
-        return "OK_SOLVED"
+        print("Warning: SWE-bench harness not available; falling back to manual scoring.")
+        return "TEST_FAIL"
 
     # ------------------------------------------------------------------
     # Convenience helpers
