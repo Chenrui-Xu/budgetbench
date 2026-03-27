@@ -9,4 +9,5 @@ build/
 .coverage
 htmlcov/
 *.log
-results/
+results/*.json
+results/*.csv
