@@ -65,28 +65,28 @@ def _load_dataset(dataset_path: str) -> list[dict]:
     # --- 1 / 2: local file --------------------------------------------------
     candidates: list[Path] = []
     p = Path(dataset_path)
-    # if p.is_file():
-    #     candidates = [p]
-    # elif p.is_dir():
-    #     for name in ("swe-bench-lite.jsonl", "data.jsonl", "swe_bench_lite.jsonl"):
-    #         if (p / name).exists():
-    #             candidates.append(p / name)
-    #             break
+    if p.is_file():
+        candidates = [p]
+    elif p.is_dir():
+        for name in ("swe-bench-lite.jsonl", "data.jsonl", "swe_bench_lite.jsonl"):
+            if (p / name).exists():
+                candidates.append(p / name)
+                break
 
-    # for candidate in candidates:
-    #     suffix = candidate.suffix.lower()
-    #     try:
-    #         if suffix == ".jsonl":
-    #             with open(candidate) as f:
-    #                 issues = [json.loads(ln) for ln in f if ln.strip()]
-    #         elif suffix == ".json":
-    #             with open(candidate) as f:
-    #                 raw = json.load(f)
-    #             issues = raw if isinstance(raw, list) else list(raw.values())
-    #     except Exception:
-    #         issues = []
-    #     if len(issues) >= _MIN_ISSUES:
-    #         return issues
+    for candidate in candidates:
+        suffix = candidate.suffix.lower()
+        try:
+            if suffix == ".jsonl":
+                with open(candidate) as f:
+                    issues = [json.loads(ln) for ln in f if ln.strip()]
+            elif suffix == ".json":
+                with open(candidate) as f:
+                    raw = json.load(f)
+                issues = raw if isinstance(raw, list) else list(raw.values())
+        except Exception:
+            issues = []
+        if len(issues) >= _MIN_ISSUES:
+            return issues
 
     # --- 3: HuggingFace -----------------------------------------------------
     try:
@@ -300,7 +300,9 @@ class _Sandbox:
         )
         if dry.returncode != 0:
             return False, dry.stderr.strip()
-        self._exec(["git", "apply", "--whitespace=fix", patch_file], check=False)
+        result = self._exec(["git", "apply", "--whitespace=fix", patch_file], check=False)
+        if result.returncode != 0:
+            return False, result.stderr.strip()
         return True, "Patch applied."
 
     # ------------------------------------------------------------------
@@ -622,7 +624,8 @@ class SWEBenchEnvironment(Environment):
                         return "INVALID_FORMAT"
                     if "git apply" in lower_err or "patch apply" in lower_err or "reject" in lower_err:
                         return "PATCH_APPLY_FAIL"
-                    # Unknown error, fall back to manual evaluation
+                    # Unknown harness error — conservative failure
+                    return "TEST_FAIL"
             finally:
                 # Clean up temporary directory
                 try:
@@ -630,30 +633,30 @@ class SWEBenchEnvironment(Environment):
                 except Exception:
                     pass
 
-        # # Manual scoring path as a fallback
-        # with _Sandbox(self._issue, self.docker_image) as oracle:
-        #     # Attempt to apply the patch
-        #     applied, _msg = oracle.apply_patch(patch)
-        #     if not applied:
-        #         return "PATCH_APPLY_FAIL"
+        # Manual scoring fallback (used when swebench harness is not installed)
+        with _Sandbox(self._issue, self.docker_image) as oracle:
+            # Attempt to apply the patch
+            applied, _msg = oracle.apply_patch(patch)
+            if not applied:
+                return "PATCH_APPLY_FAIL"
 
-        #     # Run FAIL_TO_PASS tests (bug-triggering tests)
-        #     passed, _out = oracle.run_tests()
-        #     if not passed:
-        #         return "TEST_FAIL"
+            # Run FAIL_TO_PASS tests (bug-triggering tests)
+            passed, _out = oracle.run_tests()
+            if not passed:
+                return "TEST_FAIL"
 
-        #     # Run PASS_TO_PASS regression tests (should still pass)
-        #     p2p_tests = self._issue.get("PASS_TO_PASS", [])
-        #     if isinstance(p2p_tests, str):
-        #         try:
-        #             p2p_tests = json.loads(p2p_tests)
-        #         except json.JSONDecodeError:
-        #             p2p_tests = []
-        #     if p2p_tests:
-        #         regression_cmd = "python -m pytest " + " ".join(p2p_tests) + " -x -q --tb=short 2>&1"
-        #         regression_ok, _rout = oracle.run_tests(regression_cmd)
-        #         if not regression_ok:
-        #             return "TEST_FAIL"
+            # Run PASS_TO_PASS regression tests (should still pass)
+            p2p_tests = self._issue.get("PASS_TO_PASS", [])
+            if isinstance(p2p_tests, str):
+                try:
+                    p2p_tests = json.loads(p2p_tests)
+                except json.JSONDecodeError:
+                    p2p_tests = []
+            if p2p_tests:
+                regression_cmd = "python -m pytest " + " ".join(p2p_tests) + " -x -q --tb=short 2>&1"
+                regression_ok, _rout = oracle.run_tests(regression_cmd)
+                if not regression_ok:
+                    return "TEST_FAIL"
 
         return "OK_SOLVED"
 
