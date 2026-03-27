@@ -95,7 +95,7 @@ def auc_success_vs_budget(
     budgets = range(1, b_max + 1)
     values  = [success_at_b(episodes, b) for b in budgets]
     # trapezoidal integration, normalised
-    auc = float(np.trapz(values, budgets)) / b_max
+    auc = float(np.trapezoid(values, budgets)) / b_max
     return auc
 
 
