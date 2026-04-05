@@ -16,7 +16,7 @@ from google import genai
 
 from budgetbench.interfaces import Agent, ToolCall
 
-_DEFAULT_MODEL = "gemini-2.0-flash"
+_DEFAULT_MODEL = "gemini-2.5-flash"
 
 _SYSTEM_PROMPT = """\
 You are an expert software engineer working inside a code repository.
