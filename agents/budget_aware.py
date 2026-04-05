@@ -25,7 +25,7 @@ from google import genai
 
 from budgetbench.interfaces import Agent, ToolCall
 
-_DEFAULT_MODEL    = "gemini-2.0-flash"
+_DEFAULT_MODEL    = "gemini-2.5-flash"
 _HIGH_THRESHOLD   = 0.6
 _MEDIUM_THRESHOLD = 0.3
 
@@ -170,6 +170,17 @@ class BudgetAwareAgent(Agent):
             # In MEDIUM regime, block run_tests to save budget
             if regime == "MEDIUM" and action.get("tool") == "run_tests":
                 action = {"tool": "submit_patch", "patch": ""}
+            # Strip markdown fences from patch content if LLM wrapped it
+            if action.get("tool") == "submit_patch" and action.get("patch"):
+                patch = action["patch"].strip()
+                if patch.startswith("```"):
+                    parts = patch.split("```")
+                    patch = parts[1] if len(parts) > 1 else ""
+                    if "\n" in patch:
+                        first_line = patch[:patch.index("\n")]
+                        if first_line.strip() in ("", "diff", "patch", "python", "py"):
+                            patch = patch[patch.index("\n")+1:]
+                    action["patch"] = patch.strip()
             return action
         except Exception:
             return {"tool": "submit_patch", "patch": ""}

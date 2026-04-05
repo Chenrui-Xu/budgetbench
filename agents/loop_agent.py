@@ -127,6 +127,17 @@ class LoopAgent(Agent):
             action = json.loads(raw)
             if "tool" not in action:
                 raise ValueError("Missing 'tool' key")
+            # Strip markdown fences from patch content if LLM wrapped it
+            if action.get("tool") == "submit_patch" and action.get("patch"):
+                patch = action["patch"].strip()
+                if patch.startswith("```"):
+                    parts = patch.split("```")
+                    patch = parts[1] if len(parts) > 1 else ""
+                    if "\n" in patch:
+                        first_line = patch[:patch.index("\n")]
+                        if first_line.strip() in ("", "diff", "patch", "python", "py"):
+                            patch = patch[patch.index("\n")+1:]
+                    action["patch"] = patch.strip()
             return action
         except Exception:
             # Fallback: submit with whatever we have
