@@ -97,6 +97,15 @@ def _make_knapsack_agents() -> dict:
             return {"tool": "submit_patch", "patch": ""}
 
     class _BudgetAwareAgent(Agent):
+        def _greedy_submit(self):
+            items = sorted(self._items.values(),
+                           key=lambda x: x["value"] / max(x["weight"], 1), reverse=True)
+            sel, w = [], 0
+            for it in items:
+                if w + it["weight"] <= self._cap:
+                    sel.append(it["id"]); w += it["weight"]
+            return {"tool": "submit_patch", "patch": json.dumps({"selected": sel})}
+
         def act(self, obs, budget_remaining, history):
             if not history:
                 self._cap = obs.get("capacity", 50)
@@ -104,34 +113,28 @@ def _make_knapsack_agents() -> dict:
                 self._items: dict = {}
                 self._to_add: list = []
                 return {"tool": "list_items"}
-            frac = budget_remaining / max(self._budget_total, 1)
             last = history[-1]
-            # HIGH regime: loop strategy
-            if frac > 0.6:
-                if last.name == "list_items":
-                    self._items = {it["id"]: it for it in last.result.get("items", [])}
-                    self._to_add = list(self._items.keys())
-                if self._to_add:
-                    return {"tool": "add_item", "id": self._to_add.pop(0)}
-                if last.name in ("add_item", "remove_item"):
-                    return {"tool": "check_feasibility"}
-                if last.name == "check_feasibility":
-                    if last.result.get("feasible", True):
-                        return {"tool": "submit_patch", "patch": ""}
-                    sel = last.result.get("selected_ids", [])
-                    if sel:
-                        worst = min(sel, key=lambda i: self._items[i]["value"] / max(self._items[i]["weight"], 1))
-                        return {"tool": "remove_item", "id": worst}
-            # MEDIUM/LOW: greedy immediately
+            # Always capture items when received
             if last.name == "list_items":
-                items = last.result.get("items", [])
-                items = sorted(items, key=lambda x: x["value"] / max(x["weight"], 1), reverse=True)
-                sel, w = [], 0
-                for it in items:
-                    if w + it["weight"] <= self._cap:
-                        sel.append(it["id"]); w += it["weight"]
-                return {"tool": "submit_patch", "patch": json.dumps({"selected": sel})}
-            return {"tool": "submit_patch", "patch": ""}
+                self._items = {it["id"]: it for it in last.result.get("items", [])}
+                self._to_add = list(self._items.keys())
+            frac = budget_remaining / max(self._budget_total, 1)
+            # MEDIUM/LOW: greedy submit immediately (if we have items)
+            if frac <= 0.6 and self._items:
+                return self._greedy_submit()
+            # HIGH regime: thorough loop strategy
+            if self._to_add:
+                return {"tool": "add_item", "id": self._to_add.pop(0)}
+            if last.name in ("add_item", "remove_item"):
+                return {"tool": "check_feasibility"}
+            if last.name == "check_feasibility":
+                if last.result.get("feasible", True) or budget_remaining < 3:
+                    return {"tool": "submit_patch", "patch": ""}
+                sel = last.result.get("selected_ids", [])
+                if sel:
+                    worst = min(sel, key=lambda i: self._items[i]["value"] / max(self._items[i]["weight"], 1))
+                    return {"tool": "remove_item", "id": worst}
+            return self._greedy_submit() if self._items else {"tool": "submit_patch", "patch": ""}
 
     return {
         "SingleShot":  _GreedyAgent(),
