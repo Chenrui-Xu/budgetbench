@@ -31,7 +31,11 @@ import tempfile
 from pathlib import Path
 from typing import Any, Optional
 
+import logging
+
 from budgetbench.interfaces import Environment, StatusCode
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -150,20 +154,29 @@ class _Sandbox:
     resource limits suitable for test execution.
     """
 
-    def __init__(self, issue: dict, fallback_image: str) -> None:
+    def __init__(self, issue: dict, fallback_image: str, verbose: bool = False) -> None:
         self._issue    = issue
         self._image    = self._pick_image(issue["instance_id"], fallback_image)
         self._cid: Optional[str] = None
+        self._verbose  = verbose
+
+    def _log(self, msg: str, *args: Any) -> None:
+        if self._verbose:
+            logger.warning(msg, *args)
 
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
     def start(self) -> None:
+        repo = self._issue.get("repo", "")
+        base = self._issue.get("base_commit", "HEAD")
+        self._log("[Sandbox] Starting container image=%s repo=%s base=%s", self._image, repo, base)
+
+        # Start with network enabled so we can clone the repo
         result = subprocess.run(
             [
                 "docker", "run", "-d", "--rm",
-                "--network", "none",
                 "--memory", "2g",
                 "--cpus",   "2",
                 self._image,
@@ -172,11 +185,50 @@ class _Sandbox:
             capture_output=True, text=True, check=True,
         )
         self._cid = result.stdout.strip()
-        # Pin to the exact pre-patch commit and clean working tree
-        base = self._issue.get("base_commit", "HEAD")
-        self._exec(["git", "checkout", base],      check=False)
+        self._log("[Sandbox] Container started cid=%s", self._cid[:12])
+
+        # Install git (python:3.11-slim doesn't include it)
+        self._log("[Sandbox] Installing git")
+        r = self._exec(
+            ["apt-get", "install", "-y", "-q", "git"],
+            workdir="/",
+            timeout=120,
+            check=False,
+        )
+        if r.returncode != 0:
+            # Try updating apt first
+            self._exec(["apt-get", "update", "-q"], workdir="/", timeout=120, check=False)
+            r = self._exec(["apt-get", "install", "-y", "-q", "git"], workdir="/", timeout=120, check=False)
+        self._log("[Sandbox] git install rc=%d", r.returncode)
+
+        # Clone the repo at the base commit inside the container
+        if repo:
+            clone_url = f"https://github.com/{repo}.git"
+            self._log("[Sandbox] Cloning %s into %s", clone_url, _REPO_DIR)
+            r = self._exec(
+                ["git", "clone", "--depth=50", clone_url, _REPO_DIR],
+                workdir="/",
+                timeout=300,
+                check=False,
+            )
+            if r.returncode != 0:
+                self._log("[Sandbox] Clone failed: %s", r.stderr.strip()[:300])
+            else:
+                self._log("[Sandbox] Clone succeeded")
+
+        self._log("[Sandbox] Checking out base commit %s", base)
+        r = self._exec(["git", "checkout", base], check=False)
+        if r.returncode != 0:
+            # Shallow clone didn't include this commit — fetch it explicitly
+            self._log("[Sandbox] Shallow clone missing commit, fetching: %s", r.stderr.strip()[:200])
+            self._exec(["git", "fetch", "--unshallow"], timeout=600, check=False)
+            r = self._exec(["git", "checkout", base], check=False)
+            self._log("[Sandbox] checkout after unshallow rc=%d", r.returncode)
+        else:
+            self._log("[Sandbox] checkout rc=%d", r.returncode)
         self._exec(["git", "reset", "--hard", base], check=False)
-        self._exec(["git", "clean", "-fdx"],        check=False)
+        self._exec(["git", "clean", "-fdx"],         check=False)
+        self._log("[Sandbox] Repo ready")
 
     def stop(self) -> None:
         if self._cid:
@@ -237,20 +289,25 @@ class _Sandbox:
     # ------------------------------------------------------------------
 
     def search(self, query: str, path: str = ".") -> str:
+        self._log("[Sandbox.search] query=%r path=%r", query, path)
         r = self._exec(
             ["grep", "-rn", "--include=*.py", "-i", "--", query, path],
             check=False,
         )
         out = (r.stdout or "").strip()
-        return out[:4000] if out else "(no matches)"
+        result = out[:4000] if out else "(no matches)"
+        self._log("[Sandbox.search] rc=%d result_len=%d preview=%r", r.returncode, len(result), result[:200])
+        return result
 
     def inspect(self, file_path: str, start: int = 1, end: Optional[int] = None) -> str:
         abs_path = (
             file_path if file_path.startswith("/")
             else f"{_REPO_DIR}/{file_path}"
         )
+        self._log("[Sandbox.inspect] file=%r start=%d end=%s", abs_path, start, end)
         r = self._exec(["cat", "-n", abs_path], check=False)
         if r.returncode != 0:
+            self._log("[Sandbox.inspect] Error: %s", r.stderr.strip())
             return f"Error reading file: {r.stderr.strip()}"
         lines = r.stdout.splitlines()
         end   = end or len(lines)
@@ -375,15 +432,21 @@ class SWEBenchEnvironment(Environment):
         issue_id:     str,
         dataset_path: str = "data/swe-bench-lite",
         docker_image: str = "python:3.11-slim",
+        verbose:      bool = False,
     ) -> None:
         self.issue_id     = issue_id
         self.dataset_path = dataset_path
         self.docker_image = docker_image
+        self.verbose      = verbose
 
         self._issues:  list[dict]            = []
         self._issue:   Optional[dict]        = None
         self._sandbox: Optional[_Sandbox]    = None
         self._submitted_patch: str           = ""
+
+    def _log(self, msg: str, *args: Any) -> None:
+        if self.verbose:
+            logger.warning(msg, *args)
 
     # ------------------------------------------------------------------
     # Environment interface
@@ -417,7 +480,7 @@ class SWEBenchEnvironment(Environment):
         if self._sandbox is not None:
             self._sandbox.stop()
 
-        self._sandbox = _Sandbox(self._issue, self.docker_image)
+        self._sandbox = _Sandbox(self._issue, self.docker_image, verbose=self.verbose)
         self._sandbox.start()
         self._submitted_patch = ""
 
@@ -441,6 +504,7 @@ class SWEBenchEnvironment(Environment):
             return {"error": "Call reset() before step()."}, False
 
         tool = action.get("tool", "unknown")
+        self._log("[step] tool=%s action_keys=%s", tool, list(action.keys()))
 
         # ---- search -------------------------------------------------------
         if tool == "search":
@@ -499,6 +563,7 @@ class SWEBenchEnvironment(Environment):
         # ---- submit_patch -------------------------------------------------
         if tool == "submit_patch":
             patch = action.get("patch", "")
+            self._log("[step] submit_patch patch_len=%d patch_preview=%r", len(patch), patch[:300])
             self._submitted_patch = patch
             return {
                 "tool":      "submit_patch",
@@ -548,87 +613,92 @@ class SWEBenchEnvironment(Environment):
 
         # 1. Validate unified diff format
         if not _is_unified_diff(patch):
+            import logging
+            logging.getLogger(__name__).warning(
+                "INVALID_FORMAT — submitted patch (first 500 chars):\n%s",
+                repr(patch[:500])
+            )
             return "INVALID_FORMAT"
 
         # Attempt to use swebench harness if available
-        use_harness = False
+        # use_harness = False
+        # try:
+        #     import importlib.util
+        #     spec = importlib.util.find_spec("swebench.harness.run_evaluation")
+        #     use_harness = spec is not None
+        # except Exception:
+        #     use_harness = False
+
+        # if use_harness:
         try:
-            import importlib.util
-            spec = importlib.util.find_spec("swebench.harness.run_evaluation")
-            use_harness = spec is not None
-        except Exception:
-            use_harness = False
+            import tempfile
+            import shutil
+            from pathlib import Path
 
-        if use_harness:
-            try:
-                import tempfile
-                import shutil
-                from pathlib import Path
+            # Prepare a temporary directory for predictions and reports
+            run_id = f"budgetbench_{self._issue['instance_id'].replace('/', '_')}"
+            work_dir = Path(tempfile.mkdtemp(prefix="sweb_eval_"))
+            preds_path = work_dir / "predictions.jsonl"
+            report_dir = work_dir / "reports"
+            # Create predictions file for this single instance
+            prediction = {
+                "instance_id": self._issue["instance_id"],
+                "model_name_or_path": "budgetbench-env",
+                "model_patch": patch,
+            }
+            preds_path.write_text(json.dumps(prediction) + "\n", encoding="utf-8")
 
-                # Prepare a temporary directory for predictions and reports
-                run_id = f"budgetbench_{self._issue['instance_id'].replace('/', '_')}"
-                work_dir = Path(tempfile.mkdtemp(prefix="sweb_eval_"))
-                preds_path = work_dir / "predictions.jsonl"
-                report_dir = work_dir / "reports"
-                # Create predictions file for this single instance
-                prediction = {
-                    "instance_id": self._issue["instance_id"],
-                    "model_name_or_path": "budgetbench-env",
-                    "model_patch": patch,
-                }
-                preds_path.write_text(json.dumps(prediction) + "\n", encoding="utf-8")
+            cmd = [
+                "python", "-m", "swebench.harness.run_evaluation",
+                "--dataset_name", "princeton-nlp/SWE-bench_Lite",
+                "--predictions_path", str(preds_path),
+                "--instance_ids", self._issue["instance_id"],
+                "--max_workers", "1",
+                "--run_id", run_id,
+                "--cache_level", "env",
+                "--clean", "true",
+                "--rewrite_reports", "true",
+                "--report_dir", str(report_dir),
+            ]
 
-                cmd = [
-                    "python", "-m", "swebench.harness.run_evaluation",
-                    "--dataset_name", "princeton-nlp/SWE-bench_Lite",
-                    "--predictions_path", str(preds_path),
-                    "--instance_ids", self._issue["instance_id"],
-                    "--max_workers", "1",
-                    "--run_id", run_id,
-                    "--cache_level", "env",
-                    "--clean", "true",
-                    "--rewrite_reports", "true",
-                    "--report_dir", str(report_dir),
-                ]
+            completed = subprocess.run(cmd, capture_output=True, text=True, timeout=1800, check=False)
 
-                completed = subprocess.run(cmd, capture_output=True, text=True, timeout=1800, check=False)
-
-                # If harness executed successfully, inspect report file
-                if completed.returncode == 0:
-                    # Locate report JSON
-                    report_files = list(report_dir.rglob("*.json"))
-                    if report_files:
-                        try:
-                            content = report_files[0].read_text(encoding="utf-8").lower()
-                            # Determine result heuristically
-                            if "\"resolved\": true" in content or "\"success\": true" in content:
-                                return "OK_SOLVED"
-                            if "patch_apply_fail" in content or "\"applied\": false" in content:
-                                return "PATCH_APPLY_FAIL"
-                            if "invalid" in content and "patch" in content:
-                                return "INVALID_FORMAT"
-                            return "TEST_FAIL"
-                        except Exception:
-                            # Could not parse report, fall through to manual
-                            pass
-                    else:
-                        # No report generated, treat as generic failure
+            # If harness executed successfully, inspect report file
+            if completed.returncode == 0:
+                # Locate report JSON
+                report_files = list(report_dir.rglob("*.json"))
+                if report_files:
+                    try:
+                        content = report_files[0].read_text(encoding="utf-8").lower()
+                        # Determine result heuristically
+                        if "\"resolved\": true" in content or "\"success\": true" in content:
+                            return "OK_SOLVED"
+                        if "patch_apply_fail" in content or "\"applied\": false" in content:
+                            return "PATCH_APPLY_FAIL"
+                        if "invalid" in content and "patch" in content:
+                            return "INVALID_FORMAT"
                         return "TEST_FAIL"
+                    except Exception:
+                        # Could not parse report, fall through to manual
+                        pass
                 else:
-                    # Harness returned non-zero; inspect stderr/stdout
-                    stderr = (completed.stderr or "") + "\n" + (completed.stdout or "")
-                    lower_err = stderr.lower()
-                    if "invalid" in lower_err and "patch" in lower_err:
-                        return "INVALID_FORMAT"
-                    if "git apply" in lower_err or "patch apply" in lower_err or "reject" in lower_err:
-                        return "PATCH_APPLY_FAIL"
-                    # Unknown error, fall back to manual evaluation
-            finally:
-                # Clean up temporary directory
-                try:
-                    shutil.rmtree(work_dir, ignore_errors=True)  # type: ignore[name-defined]
-                except Exception:
-                    pass
+                    # No report generated, treat as generic failure
+                    return "TEST_FAIL"
+            else:
+                # Harness returned non-zero; inspect stderr/stdout
+                stderr = (completed.stderr or "") + "\n" + (completed.stdout or "")
+                lower_err = stderr.lower()
+                if "invalid" in lower_err and "patch" in lower_err:
+                    return "INVALID_FORMAT"
+                if "git apply" in lower_err or "patch apply" in lower_err or "reject" in lower_err:
+                    return "PATCH_APPLY_FAIL"
+                # Unknown error, fall back to manual evaluation
+        finally:
+            # Clean up temporary directory
+            try:
+                shutil.rmtree(work_dir, ignore_errors=True)  # type: ignore[name-defined]
+            except Exception:
+                pass
 
         # # Manual scoring path as a fallback
         # with _Sandbox(self._issue, self.docker_image) as oracle:

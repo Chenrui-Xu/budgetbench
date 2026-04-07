@@ -153,6 +153,7 @@ def run_batch(
     budgets: list[int],
     output_dir: str,
     dataset_path: str = "data/swe-bench-lite",
+    verbose: bool = False,
 ) -> tuple[list[dict], dict]:
     """
     Run all agents × all issues × all budgets.
@@ -183,7 +184,7 @@ def run_batch(
                 agents = _make_agents(budget)
 
             for agent_name, agent in agents.items():
-                env = _make_env(env_name, issue_id, dataset_path)
+                env = _make_env(env_name, issue_id, dataset_path, verbose=verbose)
                 try:
                     episode = runner.run_episode(
                         agent=agent,
@@ -227,14 +228,14 @@ def run_batch(
     return rows, agg
 
 
-def _make_env(env_name: str, issue_id: str, dataset_path: str):
+def _make_env(env_name: str, issue_id: str, dataset_path: str, verbose: bool = False):
     if env_name == "knapsack":
         from environments.knapsack import KnapsackEnvironment
         seed = hash(issue_id) % (2**31)
         return KnapsackEnvironment(n_items=10, capacity=50, seed=seed)
     else:
         from environments.swe_bench import SWEBenchEnvironment
-        return SWEBenchEnvironment(issue_id, docker_image="python:3.11-slim")
+        return SWEBenchEnvironment(issue_id, docker_image="python:3.11-slim", verbose=verbose)
 
 
 def _episode_to_row(ep: Episode, agent_name: str, issue_id: str, budget: int) -> dict:
@@ -311,6 +312,8 @@ def parse_args() -> argparse.Namespace:
                    help="Explicit SWE-bench issue ID(s) (overrides --num-issues)")
     p.add_argument("--dataset-path", type=str, default="data/swe-bench-lite",
                    help="Path to SWE-bench Lite dataset (only used with --env swe)")
+    p.add_argument("--verbose", action="store_true",
+                   help="Enable sandbox debug logging for SWE-bench env")
     p.add_argument("--output-dir", type=str, default="results",
                    help="Directory to write CSV/JSON/plots (default: results)")
     return p.parse_args()
@@ -348,6 +351,7 @@ if __name__ == "__main__":
         budgets=budgets,
         output_dir=args.output_dir,
         dataset_path=args.dataset_path,
+        verbose=args.verbose,
     )
 
     save_csv(rows, os.path.join(args.output_dir, "episodes.csv"))
