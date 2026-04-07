@@ -43,7 +43,7 @@ python scripts/batch_experiment.py --env knapsack --budget 5 10 20 --num-issues 
 
 # 5. SWE-bench demo (requires GEMINI_API_KEY and Docker)
 export GEMINI_API_KEY=<your_key>
-python examples/demo_swe_bench.py --issue astropy__astropy-12907
+python scripts/batch_experiment.py --env swe --budget 5 10 20 --num-issues 10 --verbose
 ```
 
 ---
