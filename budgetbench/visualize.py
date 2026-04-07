@@ -157,8 +157,8 @@ def plot_auc_comparison(
         bootstrap_ci([1.0 if ep.solved else 0.0 for ep in results[a]])
         for a in agent_names
     ]
-    yerr_lo = [auc - lo for auc, (lo, _) in zip(aucs, cis)]
-    yerr_hi = [hi - auc for auc, (_, hi) in zip(aucs, cis)]
+    yerr_lo = [max(0.0, auc - lo) for auc, (lo, _) in zip(aucs, cis)]
+    yerr_hi = [max(0.0, hi - auc) for auc, (_, hi) in zip(aucs, cis)]
 
     x      = np.arange(len(agent_names))
     colours = [_PALETTE[i % len(_PALETTE)] for i in range(len(agent_names))]
