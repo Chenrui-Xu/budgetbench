@@ -53,6 +53,9 @@ def _make_agents(budget: int, model: str = "gemini-2.5-flash") -> dict:
         "LoopAgent":   LoopAgent(model=model),
         "BudgetAware": BudgetAwareAgent(budget_total=budget, model=model),
     }
+    if names:
+        return {k: v for k, v in all_agents.items() if k in names}
+    return all_agents
 
 
 def _make_knapsack_agents() -> dict:
@@ -185,7 +188,7 @@ def run_batch(
                 agents = _make_agents(budget, model=model)
 
             for agent_name, agent in agents.items():
-                env = _make_env(env_name, issue_id, dataset_path, verbose=verbose)
+                env = _make_env(env_name, issue_id, dataset_path, verbose=verbose, use_eval_image=use_eval_image)
                 try:
                     episode = runner.run_episode(
                         agent=agent,
@@ -229,14 +232,19 @@ def run_batch(
     return rows, agg
 
 
-def _make_env(env_name: str, issue_id: str, dataset_path: str, verbose: bool = False):
+def _make_env(env_name: str, issue_id: str, dataset_path: str, verbose: bool = False, use_eval_image: bool = False):
     if env_name == "knapsack":
         from environments.knapsack import KnapsackEnvironment
         seed = hash(issue_id) % (2**31)
         return KnapsackEnvironment(n_items=10, capacity=50, seed=seed)
     else:
         from environments.swe_bench import SWEBenchEnvironment
-        return SWEBenchEnvironment(issue_id, docker_image="python:3.11-slim", verbose=verbose)
+        return SWEBenchEnvironment(
+            issue_id,
+            docker_image="python:3.11",
+            use_eval_image=use_eval_image,
+            verbose=verbose,
+        )
 
 
 def _episode_to_row(ep: Episode, agent_name: str, issue_id: str, budget: int) -> dict:
@@ -315,6 +323,13 @@ def parse_args() -> argparse.Namespace:
                    help="Path to SWE-bench Lite dataset (only used with --env swe)")
     p.add_argument("--verbose", action="store_true",
                    help="Enable sandbox debug logging for SWE-bench env")
+    p.add_argument("--agent", type=str, nargs="+", default=None,
+                   choices=_ALL_AGENTS,
+                   help="Agent(s) to run (default: all). e.g. --agent LoopAgent BudgetAware")
+    p.add_argument("--use-eval-image", action="store_true",
+                   help="Use the official swebench eval Docker image for the agent sandbox "
+                        "(enables meaningful edit/run_tests; image must already be cached "
+                        "by a prior harness run)")
     p.add_argument("--output-dir", type=str, default="results",
                    help="Directory to write CSV/JSON/plots (default: results)")
     p.add_argument("--model", type=str, default="gemini-2.5-flash",
