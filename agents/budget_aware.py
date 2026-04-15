@@ -21,9 +21,9 @@ from __future__ import annotations
 import json
 import os
 
-from google import genai
-
 from budgetbench.interfaces import Agent, ToolCall
+from agents._gemini import generate_with_retry
+
 
 _DEFAULT_MODEL    = "gemini-2.5-flash"
 _HIGH_THRESHOLD   = 0.6
@@ -64,24 +64,24 @@ At each step output a JSON object (and ONLY that JSON object):
   {"tool": "submit_patch", "patch": "<full unified diff>"}"""
 
 
-def _gemini_client() -> genai.Client:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if api_key:
-        return genai.Client(api_key=api_key)
-    return genai.Client(
-        vertexai=True,
-        project=os.environ.get("GOOGLE_CLOUD_PROJECT", "ai-agent-for-engineers"),
-        location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
-    )
-
-
-def _summarise_history(history: list[ToolCall], max_chars: int = 2000) -> str:
+def _summarise_history(history: list[ToolCall], max_chars: int = 6000) -> str:
     lines = []
     for tc in history:
-        result_str = str(tc.result)[:200]
+        limit = 4000 if tc.name in ("inspect", "edit") else 500
+        result_str = str(tc.result)[:limit]
         lines.append(f"[{tc.name}] → {result_str}")
     full = "\n".join(lines)
     return full[-max_chars:] if len(full) > max_chars else full
+
+
+def _extract_current_diff(history: list[ToolCall]) -> str:
+    """Return the latest current_diff from an edit call, or empty string."""
+    for tc in reversed(history):
+        if tc.name == "edit" and isinstance(tc.result, dict):
+            diff = tc.result.get("current_diff", "")
+            if diff:
+                return diff
+    return ""
 
 
 class BudgetAwareAgent(Agent):
@@ -133,9 +133,10 @@ class BudgetAwareAgent(Agent):
 
         regime = self._regime(budget_remaining)
 
-        # LOW: skip LLM call, submit immediately
+        # LOW: skip LLM call, submit best available patch
         if regime == "LOW":
-            return {"tool": "submit_patch", "patch": ""}
+            saved_diff = _extract_current_diff(history)
+            return {"tool": "submit_patch", "patch": saved_diff}
 
         regime_instruction = _REGIME_INSTRUCTIONS[regime]
         history_str        = _summarise_history(history)
@@ -150,13 +151,7 @@ class BudgetAwareAgent(Agent):
             f"## Next action (JSON only)"
         )
 
-        client = _gemini_client()
-        response = client.models.generate_content(
-            model=self.model,
-            contents=prompt,
-        )
-
-        raw = (response.text or "").strip()
+        raw = generate_with_retry(self.model, prompt).strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -181,6 +176,12 @@ class BudgetAwareAgent(Agent):
                         if first_line.strip() in ("", "diff", "patch", "python", "py"):
                             patch = patch[patch.index("\n")+1:]
                     action["patch"] = patch.strip()
+            # If patch is still empty, fall back to saved diff from prior edit
+            if action.get("tool") == "submit_patch" and not action.get("patch"):
+                saved_diff = _extract_current_diff(history)
+                if saved_diff:
+                    action["patch"] = saved_diff
             return action
         except Exception:
-            return {"tool": "submit_patch", "patch": ""}
+            saved_diff = _extract_current_diff(history)
+            return {"tool": "submit_patch", "patch": saved_diff}

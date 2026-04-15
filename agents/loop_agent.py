@@ -12,9 +12,9 @@ from __future__ import annotations
 import json
 import os
 
-from google import genai
-
 from budgetbench.interfaces import Agent, ToolCall
+from agents._gemini import generate_with_retry
+
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 
@@ -102,25 +102,24 @@ Rules:
 - Prefer making progress toward a fix instead of endless exploration.
 """
 
-def _gemini_client() -> genai.Client:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if api_key:
-        return genai.Client(api_key=api_key)
-    return genai.Client(
-        vertexai=True,
-        project=os.environ.get("GOOGLE_CLOUD_PROJECT", "ai-agent-for-engineers"),
-        location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
-    )
-
-
 def _summarise_history(history: list[ToolCall]) -> str:
     lines = []
     for tc in history:
-        # Keep more context for inspect results (file content is critical)
-        limit = 4000 if tc.name == "inspect" else 500
+        # Keep more context for inspect/edit results (file content + diff are critical)
+        limit = 4000 if tc.name in ("inspect", "edit") else 500
         result_str = str(tc.result)[:limit]
         lines.append(f"[{tc.name}] → {result_str}")
     return "\n".join(lines)
+
+
+def _extract_current_diff(history: list[ToolCall]) -> str:
+    """Return the latest current_diff from an edit call, or empty string."""
+    for tc in reversed(history):
+        if tc.name == "edit" and isinstance(tc.result, dict):
+            diff = tc.result.get("current_diff", "")
+            if diff:
+                return diff
+    return ""
 
 
 class LoopAgent(Agent):
@@ -188,13 +187,7 @@ class LoopAgent(Agent):
             f"## Next action (JSON only)"
         )
 
-        client = _gemini_client()
-        response = client.models.generate_content(
-            model=self.model,
-            contents=prompt,
-        )
-
-        raw = (response.text or "").strip()
+        raw = generate_with_retry(self.model, prompt).strip()
         # Strip markdown fences if present
         if raw.startswith("```"):
             raw = raw.split("```")[1]
@@ -217,12 +210,20 @@ class LoopAgent(Agent):
                         if first_line.strip() in ("", "diff", "patch", "python", "py"):
                             patch = patch[patch.index("\n")+1:]
                     action["patch"] = patch.strip()
-            # If patch is empty and we still have budget, retry once
+            # If patch is empty, try to recover
             if action.get("tool") == "submit_patch" and not action.get("patch"):
+                # First try: use current_diff from a prior edit call
+                saved_diff = _extract_current_diff(history)
+                if saved_diff:
+                    return {"tool": "submit_patch", "patch": saved_diff}
+                # Second try: ask LLM to write the patch explicitly
                 if budget_remaining > 3 and empty_retries < 2:
                     return {"tool": "search", "query": f"__empty_retry__{empty_retries}__", "path": "."}
             return action
         except Exception:
+            saved_diff = _extract_current_diff(history)
+            if saved_diff:
+                return {"tool": "submit_patch", "patch": saved_diff}
             if budget_remaining > 3 and empty_retries < 2:
                 return {"tool": "search", "query": f"__empty_retry__{empty_retries}__", "path": "."}
             return {"tool": "submit_patch", "patch": ""}
