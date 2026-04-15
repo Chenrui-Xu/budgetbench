@@ -677,6 +677,7 @@ class SWEBenchEnvironment(Environment):
                 "--run_id", run_id,
                 "--cache_level", "instance",
                 "--clean", "true",
+                "--namespace", "",
             ]
             # Run from work_dir so the report file lands there
             completed = subprocess.run(
