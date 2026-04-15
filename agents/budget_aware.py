@@ -67,11 +67,21 @@ At each step output a JSON object (and ONLY that JSON object):
 def _summarise_history(history: list[ToolCall], max_chars: int = 6000) -> str:
     lines = []
     for tc in history:
-        limit = 4000 if tc.name in ("inspect", "edit") else 500
+        limit = 4000 if tc.name in ("inspect", "edit", "run_tests") else 500
         result_str = str(tc.result)[:limit]
         lines.append(f"[{tc.name}] → {result_str}")
     full = "\n".join(lines)
     return full[-max_chars:] if len(full) > max_chars else full
+
+
+def _has_tested_after_last_edit(history: list[ToolCall]) -> bool:
+    last_edit_idx = -1
+    for i, tc in enumerate(history):
+        if tc.name == "edit":
+            last_edit_idx = i
+    if last_edit_idx == -1:
+        return False
+    return any(tc.name == "run_tests" for tc in history[last_edit_idx + 1:])
 
 
 def _extract_current_diff(history: list[ToolCall]) -> str:
@@ -81,6 +91,45 @@ def _extract_current_diff(history: list[ToolCall]) -> str:
             diff = tc.result.get("current_diff", "")
             if diff:
                 return diff
+    return ""
+
+
+_FORCE_PATCH_PROMPT = """\
+You are an expert software engineer. Based on the code you have read, write a \
+unified diff patch that fixes the issue below.
+
+Output ONLY the unified diff. No JSON, no explanation, no markdown fences.
+The diff must start with '--- ' and use standard unified diff format.
+
+## Issue
+{issue}
+
+## Code you have read
+{code_seen}
+
+## Patch"""
+
+
+def _force_generate_patch(model: str, issue: str, history: list[ToolCall]) -> str:
+    """Make a focused LLM call to generate a unified diff when normal path fails."""
+    code_parts = []
+    for tc in history:
+        if tc.name in ("inspect", "search", "edit"):
+            result_str = str(tc.result)[:3000]
+            code_parts.append(f"[{tc.name}]\n{result_str}")
+    code_seen = "\n\n".join(code_parts[-6:])
+
+    prompt = _FORCE_PATCH_PROMPT.format(issue=issue, code_seen=code_seen)
+    raw = generate_with_retry(model, prompt).strip()
+
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if "\n" in raw:
+            raw = raw[raw.index("\n")+1:]
+        raw = raw.strip()
+
+    if raw.startswith("---") or raw.startswith("diff --git"):
+        return raw
     return ""
 
 
@@ -132,22 +181,42 @@ class BudgetAwareAgent(Agent):
             )
 
         regime = self._regime(budget_remaining)
+        has_edited        = any(tc.name == "edit" for tc in history)
+        has_inspected     = any(tc.name == "inspect" for tc in history)
+        tested_after_edit = _has_tested_after_last_edit(history)
 
-        # LOW: skip LLM call, submit best available patch
+        # LOW: skip normal LLM loop, submit best available patch
         if regime == "LOW":
             saved_diff = _extract_current_diff(history)
-            return {"tool": "submit_patch", "patch": saved_diff}
+            if saved_diff:
+                return {"tool": "submit_patch", "patch": saved_diff}
+            forced = _force_generate_patch(self.model, self._issue_ctx, history)
+            return {"tool": "submit_patch", "patch": forced}
 
         regime_instruction = _REGIME_INSTRUCTIONS[regime]
         history_str        = _summarise_history(history)
+
+        force_note = ""
+        if has_inspected and not has_edited:
+            force_note = (
+                "\n\nYou have inspected the code but have NOT called edit yet. "
+                "You MUST call edit with a unified diff to make the actual change. "
+                "Do NOT call submit_patch before calling edit."
+            )
+        elif has_edited and not tested_after_edit and regime == "HIGH":
+            force_note = (
+                "\n\nYou have made an edit but have NOT run tests yet. "
+                "Call run_tests to verify your fix."
+            )
 
         prompt = (
             f"{_SYSTEM_PROMPT}\n\n"
             f"## Current budget regime: {regime}\n{regime_instruction}\n\n"
             f"## Issue\n{self._issue_ctx}\n\n"
             f"## Tool call history\n{history_str or '(none yet)'}\n\n"
-            f"## Latest observation\n{json.dumps(obs, indent=2)[:800]}\n\n"
-            f"Budget remaining: {budget_remaining} / {self._budget_total}\n\n"
+            f"## Latest observation\n{json.dumps(obs, indent=2)[:4000]}\n\n"
+            f"Budget remaining: {budget_remaining} / {self._budget_total}"
+            f"{force_note}\n\n"
             f"## Next action (JSON only)"
         )
 
@@ -165,23 +234,34 @@ class BudgetAwareAgent(Agent):
             # In MEDIUM regime, block run_tests to save budget
             if regime == "MEDIUM" and action.get("tool") == "run_tests":
                 action = {"tool": "submit_patch", "patch": ""}
-            # Strip markdown fences from patch content if LLM wrapped it
-            if action.get("tool") == "submit_patch" and action.get("patch"):
-                patch = action["patch"].strip()
-                if patch.startswith("```"):
-                    parts = patch.split("```")
-                    patch = parts[1] if len(parts) > 1 else ""
-                    if "\n" in patch:
-                        first_line = patch[:patch.index("\n")]
-                        if first_line.strip() in ("", "diff", "patch", "python", "py"):
-                            patch = patch[patch.index("\n")+1:]
-                    action["patch"] = patch.strip()
-            # If patch is still empty, fall back to saved diff from prior edit
-            if action.get("tool") == "submit_patch" and not action.get("patch"):
+            if action.get("tool") == "submit_patch":
+                # Step 1: must have edited
+                if not has_edited and budget_remaining > 2:
+                    diff = action.get("patch", "") or _force_generate_patch(
+                        self.model, self._issue_ctx, history
+                    )
+                    if diff:
+                        return {"tool": "edit", "patch": diff}
+
+                # Step 2: must run tests after edit (HIGH regime only — MEDIUM saves budget)
+                if has_edited and not tested_after_edit and regime == "HIGH" and budget_remaining > 3:
+                    return {"tool": "run_tests"}
+
+                # Step 3: submit using git diff as ground truth
                 saved_diff = _extract_current_diff(history)
                 if saved_diff:
-                    action["patch"] = saved_diff
+                    return {"tool": "submit_patch", "patch": saved_diff}
+
+                if not action.get("patch") and budget_remaining > 2:
+                    forced = _force_generate_patch(self.model, self._issue_ctx, history)
+                    if forced:
+                        return {"tool": "submit_patch", "patch": forced}
             return action
         except Exception:
             saved_diff = _extract_current_diff(history)
-            return {"tool": "submit_patch", "patch": saved_diff}
+            if saved_diff:
+                return {"tool": "submit_patch", "patch": saved_diff}
+            if budget_remaining > 2:
+                forced = _force_generate_patch(self.model, self._issue_ctx, history)
+                return {"tool": "submit_patch", "patch": forced}
+            return {"tool": "submit_patch", "patch": ""}

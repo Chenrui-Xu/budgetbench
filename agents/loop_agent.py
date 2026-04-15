@@ -90,9 +90,13 @@ Guidelines for tool usage:
 8. If the budget is limited, prioritize attempting a fix rather than exploring
    indefinitely.
 
-9. Call **submit_patch** when:
-   - you believe the patch fixes the issue, OR
-   - the remaining budget is very small.
+9. You MUST call **edit** before calling **submit_patch**. Never submit without
+   having made at least one edit. After edit succeeds, the observation contains
+   "current_diff" — copy that value exactly into submit_patch's "patch" field.
+
+10. Call **submit_patch** when:
+    - you have called edit and believe the patch fixes the issue, OR
+    - the remaining budget is very small (but still only after calling edit).
 
 Rules:
 
@@ -100,16 +104,28 @@ Rules:
 - Never output explanations or text outside the JSON object.
 - The JSON must contain the key "tool".
 - Prefer making progress toward a fix instead of endless exploration.
+- NEVER call submit_patch before calling edit at least once.
 """
 
 def _summarise_history(history: list[ToolCall]) -> str:
     lines = []
     for tc in history:
         # Keep more context for inspect/edit results (file content + diff are critical)
-        limit = 4000 if tc.name in ("inspect", "edit") else 500
+        limit = 4000 if tc.name in ("inspect", "edit", "run_tests") else 500
         result_str = str(tc.result)[:limit]
         lines.append(f"[{tc.name}] → {result_str}")
     return "\n".join(lines)
+
+
+def _has_tested_after_last_edit(history: list[ToolCall]) -> bool:
+    """Return True if run_tests was called after the most recent edit."""
+    last_edit_idx = -1
+    for i, tc in enumerate(history):
+        if tc.name == "edit":
+            last_edit_idx = i
+    if last_edit_idx == -1:
+        return False
+    return any(tc.name == "run_tests" for tc in history[last_edit_idx + 1:])
 
 
 def _extract_current_diff(history: list[ToolCall]) -> str:
@@ -119,6 +135,48 @@ def _extract_current_diff(history: list[ToolCall]) -> str:
             diff = tc.result.get("current_diff", "")
             if diff:
                 return diff
+    return ""
+
+
+_FORCE_PATCH_PROMPT = """\
+You are an expert software engineer. Based on the code you have read, write a \
+unified diff patch that fixes the issue below.
+
+Output ONLY the unified diff. No JSON, no explanation, no markdown fences.
+The diff must start with '--- ' and use standard unified diff format.
+
+## Issue
+{issue}
+
+## Code you have read
+{code_seen}
+
+## Patch"""
+
+
+def _force_generate_patch(model: str, issue: str, history: list[ToolCall]) -> str:
+    """Make a focused LLM call to generate a unified diff when normal path fails."""
+    # Collect all inspect/edit/search results as code context
+    code_parts = []
+    for tc in history:
+        if tc.name in ("inspect", "search", "edit"):
+            result_str = str(tc.result)[:3000]
+            code_parts.append(f"[{tc.name}]\n{result_str}")
+    code_seen = "\n\n".join(code_parts[-6:])  # last 6 tool results
+
+    prompt = _FORCE_PATCH_PROMPT.format(issue=issue, code_seen=code_seen)
+    raw = generate_with_retry(model, prompt).strip()
+
+    # Strip markdown fences if present
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith(("diff", "patch", "python", "py", "\n")):
+            raw = raw[raw.index("\n")+1:] if "\n" in raw else raw
+        raw = raw.strip()
+
+    # Only return if it looks like a real diff
+    if raw.startswith("---") or raw.startswith("diff --git"):
+        return raw
     return ""
 
 
@@ -164,6 +222,9 @@ class LoopAgent(Agent):
             1 for tc in history
             if tc.name == "search" and str(tc.args.get("query", "")).startswith("__empty_retry__")
         )
+        has_edited    = any(tc.name == "edit" for tc in history)
+        has_inspected = any(tc.name == "inspect" for tc in history)
+        tested_after_edit = _has_tested_after_last_edit(history)
 
         history_str = _summarise_history(history)
 
@@ -175,6 +236,17 @@ class LoopAgent(Agent):
                 f"\n\nYou have submitted an empty patch {empty_retries} time(s). "
                 "You MUST write actual code changes in the 'patch' field. "
                 "Based on the code you have read, write the fix as a unified diff now."
+            )
+        elif has_inspected and not has_edited:
+            force_note = (
+                "\n\nYou have inspected the code but have NOT called edit yet. "
+                "You MUST call edit with a unified diff to make the actual change. "
+                "Do NOT call submit_patch before calling edit."
+            )
+        elif has_edited and not tested_after_edit:
+            force_note = (
+                "\n\nYou have made an edit but have NOT run tests yet. "
+                "You MUST call run_tests to verify your fix before submitting."
             )
 
         prompt = (
@@ -210,20 +282,38 @@ class LoopAgent(Agent):
                         if first_line.strip() in ("", "diff", "patch", "python", "py"):
                             patch = patch[patch.index("\n")+1:]
                     action["patch"] = patch.strip()
-            # If patch is empty, try to recover
-            if action.get("tool") == "submit_patch" and not action.get("patch"):
-                # First try: use current_diff from a prior edit call
+            if action.get("tool") == "submit_patch":
+                # Step 1: must have edited
+                if not has_edited and budget_remaining > 2:
+                    diff = action.get("patch", "") or _force_generate_patch(
+                        self.model, self._issue_ctx, history
+                    )
+                    if diff:
+                        return {"tool": "edit", "patch": diff}
+                    return {"tool": "search", "query": f"__empty_retry__{empty_retries}__", "path": "."}
+
+                # Step 2: must have run tests after last edit
+                if has_edited and not tested_after_edit and budget_remaining > 3:
+                    return {"tool": "run_tests"}
+
+                # Step 3: submit using git diff as ground truth
                 saved_diff = _extract_current_diff(history)
                 if saved_diff:
                     return {"tool": "submit_patch", "patch": saved_diff}
-                # Second try: ask LLM to write the patch explicitly
-                if budget_remaining > 3 and empty_retries < 2:
+
+                if not action.get("patch") and budget_remaining > 2 and empty_retries < 2:
+                    forced = _force_generate_patch(self.model, self._issue_ctx, history)
+                    if forced:
+                        return {"tool": "submit_patch", "patch": forced}
                     return {"tool": "search", "query": f"__empty_retry__{empty_retries}__", "path": "."}
             return action
         except Exception:
             saved_diff = _extract_current_diff(history)
             if saved_diff:
                 return {"tool": "submit_patch", "patch": saved_diff}
-            if budget_remaining > 3 and empty_retries < 2:
+            if budget_remaining > 2 and empty_retries < 2:
+                forced = _force_generate_patch(self.model, self._issue_ctx, history)
+                if forced:
+                    return {"tool": "submit_patch", "patch": forced}
                 return {"tool": "search", "query": f"__empty_retry__{empty_retries}__", "path": "."}
             return {"tool": "submit_patch", "patch": ""}
