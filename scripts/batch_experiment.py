@@ -44,14 +44,14 @@ from budgetbench.metrics import compute_report, auc_success_vs_budget
 # Agent factories (re-instantiate per budget to reset internal state)
 # ---------------------------------------------------------------------------
 
-def _make_agents(budget: int) -> dict:
+def _make_agents(budget: int, model: str = "gemini-2.5-flash") -> dict:
     from agents.single_shot import SingleShotAgent
     from agents.loop_agent import LoopAgent
     from agents.budget_aware import BudgetAwareAgent
     return {
-        "SingleShot":  SingleShotAgent(),
-        "LoopAgent":   LoopAgent(),
-        "BudgetAware": BudgetAwareAgent(budget_total=budget),
+        "SingleShot":  SingleShotAgent(model=model),
+        "LoopAgent":   LoopAgent(model=model),
+        "BudgetAware": BudgetAwareAgent(budget_total=budget, model=model),
     }
 
 
@@ -154,6 +154,7 @@ def run_batch(
     output_dir: str,
     dataset_path: str = "data/swe-bench-lite",
     verbose: bool = False,
+    model: str = "gemini-2.5-flash",
 ) -> tuple[list[dict], dict]:
     """
     Run all agents × all issues × all budgets.
@@ -181,7 +182,7 @@ def run_batch(
             if env_name == "knapsack":
                 agents = _make_knapsack_agents()
             else:
-                agents = _make_agents(budget)
+                agents = _make_agents(budget, model=model)
 
             for agent_name, agent in agents.items():
                 env = _make_env(env_name, issue_id, dataset_path, verbose=verbose)
@@ -316,6 +317,8 @@ def parse_args() -> argparse.Namespace:
                    help="Enable sandbox debug logging for SWE-bench env")
     p.add_argument("--output-dir", type=str, default="results",
                    help="Directory to write CSV/JSON/plots (default: results)")
+    p.add_argument("--model", type=str, default="gemini-2.5-flash",
+                   help="Gemini model for LLM agents (default: gemini-2.5-flash; try gemini-2.5-pro)")
     return p.parse_args()
 
 
@@ -352,6 +355,7 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         dataset_path=args.dataset_path,
         verbose=args.verbose,
+        model=args.model,
     )
 
     save_csv(rows, os.path.join(args.output_dir, "episodes.csv"))
