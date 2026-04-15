@@ -154,9 +154,22 @@ class _Sandbox:
     resource limits suitable for test execution.
     """
 
-    def __init__(self, issue: dict, fallback_image: str, verbose: bool = False) -> None:
-        self._issue    = issue
-        self._image    = self._pick_image(issue["instance_id"], fallback_image)
+    def __init__(
+        self,
+        issue: dict,
+        fallback_image: str,
+        use_eval_image: bool = False,
+        verbose: bool = False,
+    ) -> None:
+        self._issue          = issue
+        self._use_eval_image = use_eval_image
+        if use_eval_image:
+            # Harness with namespace="swebench" replaces __ with _1776_
+            # e.g. astropy__astropy-12907 → astropy_1776_astropy-12907
+            remote_id = issue["instance_id"].lower().replace("__", "_1776_")
+            self._image = f"swebench/sweb.eval.x86_64.{remote_id}:latest"
+        else:
+            self._image = self._pick_image(issue["instance_id"], fallback_image)
         self._cid: Optional[str] = None
         self._verbose  = verbose
 
@@ -169,11 +182,9 @@ class _Sandbox:
     # ------------------------------------------------------------------
 
     def start(self) -> None:
-        repo = self._issue.get("repo", "")
         base = self._issue.get("base_commit", "HEAD")
-        self._log("[Sandbox] Starting container image=%s repo=%s base=%s", self._image, repo, base)
+        self._log("[Sandbox] Starting container image=%s use_eval=%s", self._image, self._use_eval_image)
 
-        # Start with network enabled so we can clone the repo
         result = subprocess.run(
             [
                 "docker", "run", "-d", "--rm",
@@ -187,48 +198,54 @@ class _Sandbox:
         self._cid = result.stdout.strip()
         self._log("[Sandbox] Container started cid=%s", self._cid[:12])
 
-        # Install git (python:3.11-slim doesn't include it)
-        self._log("[Sandbox] Installing git")
-        r = self._exec(
-            ["apt-get", "install", "-y", "-q", "git"],
-            workdir="/",
-            timeout=120,
-            check=False,
-        )
-        if r.returncode != 0:
-            # Try updating apt first
-            self._exec(["apt-get", "update", "-q"], workdir="/", timeout=120, check=False)
-            r = self._exec(["apt-get", "install", "-y", "-q", "git"], workdir="/", timeout=120, check=False)
-        self._log("[Sandbox] git install rc=%d", r.returncode)
-
-        # Clone the repo at the base commit inside the container
-        if repo:
-            clone_url = f"https://github.com/{repo}.git"
-            self._log("[Sandbox] Cloning %s into %s", clone_url, _REPO_DIR)
+        if self._use_eval_image:
+            # Eval image already has the repo at /testbed at base_commit with
+            # all dependencies installed.  Just reset to a clean state.
+            self._log("[Sandbox] Eval image — resetting to base commit %s", base)
+            self._exec(["git", "reset", "--hard", base], check=False)
+            self._exec(["git", "clean", "-fdx"],         check=False)
+            self._log("[Sandbox] Repo ready (eval image)")
+        else:
+            # Fallback image: install git, clone repo, checkout base commit.
+            repo = self._issue.get("repo", "")
+            self._log("[Sandbox] Installing git")
             r = self._exec(
-                ["git", "clone", "--depth=50", clone_url, _REPO_DIR],
+                ["apt-get", "install", "-y", "-q", "git"],
                 workdir="/",
-                timeout=300,
+                timeout=120,
                 check=False,
             )
             if r.returncode != 0:
-                self._log("[Sandbox] Clone failed: %s", r.stderr.strip()[:300])
-            else:
-                self._log("[Sandbox] Clone succeeded")
+                self._exec(["apt-get", "update", "-q"], workdir="/", timeout=120, check=False)
+                r = self._exec(["apt-get", "install", "-y", "-q", "git"], workdir="/", timeout=120, check=False)
+            self._log("[Sandbox] git install rc=%d", r.returncode)
 
-        self._log("[Sandbox] Checking out base commit %s", base)
-        r = self._exec(["git", "checkout", base], check=False)
-        if r.returncode != 0:
-            # Shallow clone didn't include this commit — fetch it explicitly
-            self._log("[Sandbox] Shallow clone missing commit, fetching: %s", r.stderr.strip()[:200])
-            self._exec(["git", "fetch", "--unshallow"], timeout=600, check=False)
+            if repo:
+                clone_url = f"https://github.com/{repo}.git"
+                self._log("[Sandbox] Cloning %s into %s", clone_url, _REPO_DIR)
+                r = self._exec(
+                    ["git", "clone", "--depth=50", clone_url, _REPO_DIR],
+                    workdir="/",
+                    timeout=300,
+                    check=False,
+                )
+                if r.returncode != 0:
+                    self._log("[Sandbox] Clone failed: %s", r.stderr.strip()[:300])
+                else:
+                    self._log("[Sandbox] Clone succeeded")
+
+            self._log("[Sandbox] Checking out base commit %s", base)
             r = self._exec(["git", "checkout", base], check=False)
-            self._log("[Sandbox] checkout after unshallow rc=%d", r.returncode)
-        else:
-            self._log("[Sandbox] checkout rc=%d", r.returncode)
-        self._exec(["git", "reset", "--hard", base], check=False)
-        self._exec(["git", "clean", "-fdx"],         check=False)
-        self._log("[Sandbox] Repo ready")
+            if r.returncode != 0:
+                self._log("[Sandbox] Shallow clone missing commit, fetching: %s", r.stderr.strip()[:200])
+                self._exec(["git", "fetch", "--unshallow"], timeout=600, check=False)
+                r = self._exec(["git", "checkout", base], check=False)
+                self._log("[Sandbox] checkout after unshallow rc=%d", r.returncode)
+            else:
+                self._log("[Sandbox] checkout rc=%d", r.returncode)
+            self._exec(["git", "reset", "--hard", base], check=False)
+            self._exec(["git", "clean", "-fdx"],         check=False)
+            self._log("[Sandbox] Repo ready")
 
     def stop(self) -> None:
         if self._cid:
@@ -379,13 +396,11 @@ class _Sandbox:
     @staticmethod
     def _pick_image(instance_id: str, fallback: str) -> str:
         """
-        Select the Docker image to use for this sandbox.
+        Select the Docker image for this sandbox.
 
-        In this simplified implementation we always return the ``fallback``
-        image.  Checking for per‑instance images can lead to authentication
-        failures and complicates reproducibility.  By using a single base
-        image for all issues, we ensure the sandbox can start without
-        external dependencies.
+        This sandbox is used for agent interaction only (search/inspect/edit).
+        Evaluation is handled separately by the swebench harness which manages
+        its own per-instance images.  Always use the fallback image here.
         """
         return fallback
 
@@ -429,15 +444,17 @@ class SWEBenchEnvironment(Environment):
 
     def __init__(
         self,
-        issue_id:     str,
-        dataset_path: str = "data/swe-bench-lite",
-        docker_image: str = "python:3.11-slim",
-        verbose:      bool = False,
+        issue_id:       str,
+        dataset_path:   str  = "data/swe-bench-lite",
+        docker_image:   str  = "python:3.11",
+        use_eval_image: bool = False,
+        verbose:        bool = False,
     ) -> None:
-        self.issue_id     = issue_id
-        self.dataset_path = dataset_path
-        self.docker_image = docker_image
-        self.verbose      = verbose
+        self.issue_id       = issue_id
+        self.dataset_path   = dataset_path
+        self.docker_image   = docker_image
+        self.use_eval_image = use_eval_image
+        self.verbose        = verbose
 
         self._issues:  list[dict]            = []
         self._issue:   Optional[dict]        = None
@@ -480,7 +497,11 @@ class SWEBenchEnvironment(Environment):
         if self._sandbox is not None:
             self._sandbox.stop()
 
-        self._sandbox = _Sandbox(self._issue, self.docker_image, verbose=self.verbose)
+        self._sandbox = _Sandbox(
+            self._issue, self.docker_image,
+            use_eval_image=self.use_eval_image,
+            verbose=self.verbose,
+        )
         self._sandbox.start()
         self._submitted_patch = ""
 
@@ -639,7 +660,6 @@ class SWEBenchEnvironment(Environment):
             run_id = f"budgetbench_{self._issue['instance_id'].replace('/', '_')}"
             work_dir = Path(tempfile.mkdtemp(prefix="sweb_eval_"))
             preds_path = work_dir / "predictions.jsonl"
-            report_dir = work_dir / "reports"
             # Create predictions file for this single instance
             prediction = {
                 "instance_id": self._issue["instance_id"],
@@ -650,36 +670,67 @@ class SWEBenchEnvironment(Environment):
 
             cmd = [
                 "python", "-m", "swebench.harness.run_evaluation",
-                "--dataset_name", "princeton-nlp/SWE-bench_Lite",
+                "--dataset_name", "SWE-bench/SWE-bench_Lite",
                 "--predictions_path", str(preds_path),
                 "--instance_ids", self._issue["instance_id"],
                 "--max_workers", "1",
                 "--run_id", run_id,
-                "--cache_level", "env",
+                "--cache_level", "instance",
                 "--clean", "true",
-                "--rewrite_reports", "true",
-                "--report_dir", str(report_dir),
             ]
+            # Run from work_dir so the report file lands there
+            completed = subprocess.run(
+                cmd, capture_output=True, text=True,
+                timeout=1800, check=False, cwd=str(work_dir),
+            )
+            if self.verbose or completed.returncode != 0:
+                if completed.stdout:
+                    logger.warning("[harness stdout]\n%s", completed.stdout[-3000:])
+                if completed.stderr:
+                    logger.warning("[harness stderr]\n%s", completed.stderr[-3000:])
 
-            completed = subprocess.run(cmd, capture_output=True, text=True, timeout=1800, check=False)
-
-            # If harness executed successfully, inspect report file
+            # If harness executed successfully, inspect report file.
+            # Harness writes {model_name_or_path}.{run_id}.json into CWD (work_dir).
             if completed.returncode == 0:
-                # Locate report JSON
-                report_files = list(report_dir.rglob("*.json"))
-                if report_files:
+                instance_id = self._issue["instance_id"]
+                summary_path = work_dir / f"budgetbench-env.{run_id}.json"
+                if not summary_path.exists():
+                    candidates = list(work_dir.rglob("*.json"))
+                    summary_path = candidates[0] if candidates else None
+
+                if summary_path and summary_path.exists():
                     try:
-                        content = report_files[0].read_text(encoding="utf-8").lower()
-                        # Determine result heuristically
-                        if "\"resolved\": true" in content or "\"success\": true" in content:
+                        report_data = json.loads(summary_path.read_text(encoding="utf-8"))
+
+                        # Format A: summary report produced by run_evaluation
+                        #   {"resolved_ids": [...], "unresolved_ids": [...], ...}
+                        if "resolved_ids" in report_data:
+                            if instance_id in report_data["resolved_ids"]:
+                                return "OK_SOLVED"
+                            if instance_id in report_data.get("error_ids", []):
+                                # error_ids = harness runtime error (Docker,
+                                # patch apply, infra, …).  Log the instance
+                                # log for post-mortem and return TEST_FAIL.
+                                instance_log = (
+                                    work_dir / "logs" / "run_evaluation"
+                                    / run_id / "budgetbench-env"
+                                    / instance_id / "run_instance.log"
+                                )
+                                if instance_log.exists():
+                                    tail = instance_log.read_text(encoding="utf-8", errors="replace")[-2000:]
+                                    logger.warning("[run_instance.log tail]\n%s", tail)
+                                return "TEST_FAIL"
+                            return "TEST_FAIL"
+
+                        # Format B: per-instance report
+                        #   {"resolved": true/false, "patch_successfully_applied": ...}
+                        if report_data.get("resolved") is True:
                             return "OK_SOLVED"
-                        if "patch_apply_fail" in content or "\"applied\": false" in content:
+                        if report_data.get("patch_successfully_applied") is False:
                             return "PATCH_APPLY_FAIL"
-                        if "invalid" in content and "patch" in content:
-                            return "INVALID_FORMAT"
                         return "TEST_FAIL"
                     except Exception:
-                        # Could not parse report, fall through to manual
+                        # Malformed JSON — fall through to stderr heuristics
                         pass
                 else:
                     # No report generated, treat as generic failure

@@ -44,15 +44,20 @@ from budgetbench.metrics import compute_report, auc_success_vs_budget
 # Agent factories (re-instantiate per budget to reset internal state)
 # ---------------------------------------------------------------------------
 
-def _make_agents(budget: int) -> dict:
+_ALL_AGENTS = ["SingleShot", "LoopAgent", "BudgetAware"]
+
+def _make_agents(budget: int, names: list[str] | None = None) -> dict:
     from agents.single_shot import SingleShotAgent
     from agents.loop_agent import LoopAgent
     from agents.budget_aware import BudgetAwareAgent
-    return {
+    all_agents = {
         "SingleShot":  SingleShotAgent(),
         "LoopAgent":   LoopAgent(),
         "BudgetAware": BudgetAwareAgent(budget_total=budget),
     }
+    if names:
+        return {k: v for k, v in all_agents.items() if k in names}
+    return all_agents
 
 
 def _make_knapsack_agents() -> dict:
@@ -154,6 +159,8 @@ def run_batch(
     output_dir: str,
     dataset_path: str = "data/swe-bench-lite",
     verbose: bool = False,
+    use_eval_image: bool = False,
+    agent_names: list[str] | None = None,
 ) -> tuple[list[dict], dict]:
     """
     Run all agents × all issues × all budgets.
@@ -181,10 +188,10 @@ def run_batch(
             if env_name == "knapsack":
                 agents = _make_knapsack_agents()
             else:
-                agents = _make_agents(budget)
+                agents = _make_agents(budget, names=agent_names)
 
             for agent_name, agent in agents.items():
-                env = _make_env(env_name, issue_id, dataset_path, verbose=verbose)
+                env = _make_env(env_name, issue_id, dataset_path, verbose=verbose, use_eval_image=use_eval_image)
                 try:
                     episode = runner.run_episode(
                         agent=agent,
@@ -228,14 +235,19 @@ def run_batch(
     return rows, agg
 
 
-def _make_env(env_name: str, issue_id: str, dataset_path: str, verbose: bool = False):
+def _make_env(env_name: str, issue_id: str, dataset_path: str, verbose: bool = False, use_eval_image: bool = False):
     if env_name == "knapsack":
         from environments.knapsack import KnapsackEnvironment
         seed = hash(issue_id) % (2**31)
         return KnapsackEnvironment(n_items=10, capacity=50, seed=seed)
     else:
         from environments.swe_bench import SWEBenchEnvironment
-        return SWEBenchEnvironment(issue_id, docker_image="python:3.11-slim", verbose=verbose)
+        return SWEBenchEnvironment(
+            issue_id,
+            docker_image="python:3.11",
+            use_eval_image=use_eval_image,
+            verbose=verbose,
+        )
 
 
 def _episode_to_row(ep: Episode, agent_name: str, issue_id: str, budget: int) -> dict:
@@ -314,6 +326,13 @@ def parse_args() -> argparse.Namespace:
                    help="Path to SWE-bench Lite dataset (only used with --env swe)")
     p.add_argument("--verbose", action="store_true",
                    help="Enable sandbox debug logging for SWE-bench env")
+    p.add_argument("--agent", type=str, nargs="+", default=None,
+                   choices=_ALL_AGENTS,
+                   help="Agent(s) to run (default: all). e.g. --agent LoopAgent BudgetAware")
+    p.add_argument("--use-eval-image", action="store_true",
+                   help="Use the official swebench eval Docker image for the agent sandbox "
+                        "(enables meaningful edit/run_tests; image must already be cached "
+                        "by a prior harness run)")
     p.add_argument("--output-dir", type=str, default="results",
                    help="Directory to write CSV/JSON/plots (default: results)")
     return p.parse_args()
@@ -352,6 +371,8 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         dataset_path=args.dataset_path,
         verbose=args.verbose,
+        use_eval_image=args.use_eval_image,
+        agent_names=args.agent,
     )
 
     save_csv(rows, os.path.join(args.output_dir, "episodes.csv"))

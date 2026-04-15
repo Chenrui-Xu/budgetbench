@@ -45,7 +45,7 @@ DEFAULT_ISSUE = "django__django-11099"
 
 
 def _image_for(instance_id: str) -> str:
-    return f"python:3.11-slim"
+    return f"python:3.11"
 
 
 def run_experiments(issues: list[str], budget: int = 20) -> dict:
