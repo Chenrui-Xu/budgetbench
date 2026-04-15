@@ -42,6 +42,7 @@ python examples/demo_knapsack.py
 python scripts/batch_experiment.py --env knapsack --budget 5 10 20 --num-issues 10
 
 # 5. SWE-bench demo (requires GEMINI_API_KEY and Docker)
+python scripts/prebuild_images.py --num-issues 10 #pull docker image (optinal: run this if you want to --use-eval-image for batch_experiment.py) 
 export GEMINI_API_KEY=<your_key>
 python scripts/batch_experiment.py --env swe --budget 5 10 20 --num-issues 10 --verbose
 ```
