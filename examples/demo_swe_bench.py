@@ -48,16 +48,16 @@ def _image_for(instance_id: str) -> str:
     return f"python:3.11"
 
 
-def run_experiments(issues: list[str], budget: int = 20) -> dict:
+def run_experiments(issues: list[str], budget: int = 20, model: str = "gemini-2.5-flash") -> dict:
     runner = BudgetRunner()
     config = BudgetConfig(
         total=budget,
         cost_weights={"run_tests": 3, "submit_patch": 0},
     )
     agents = {
-        "SingleShot":  SingleShotAgent(),
-        "LoopAgent":   LoopAgent(),
-        "BudgetAware": BudgetAwareAgent(budget_total=budget),
+        "SingleShot":  SingleShotAgent(model=model),
+        "LoopAgent":   LoopAgent(model=model),
+        "BudgetAware": BudgetAwareAgent(budget_total=budget, model=model),
     }
 
     results: dict[str, list] = {name: [] for name in agents}
@@ -108,6 +108,8 @@ def parse_args() -> argparse.Namespace:
                         help="Path to local SWE-bench Lite JSONL file or directory")
     parser.add_argument("--budget", type=int, default=20,
                         help="Total tool-call budget per episode (default: 20)")
+    parser.add_argument("--model", type=str, default="gemini-2.5-flash",
+                        help="Gemini model identifier (default: gemini-2.5-flash)")
     return parser.parse_args()
 
 
@@ -127,7 +129,7 @@ if __name__ == "__main__":
         issues = [DEFAULT_ISSUE]
 
     print(f"Running BudgetBench demo on SWE-bench ({len(issues)} issue(s))...\n")
-    results = run_experiments(issues, budget=args.budget)
+    results = run_experiments(issues, budget=args.budget, model=args.model)
     print_report(results)
 
     try:

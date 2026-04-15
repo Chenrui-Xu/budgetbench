@@ -44,16 +44,14 @@ from budgetbench.metrics import compute_report, auc_success_vs_budget
 # Agent factories (re-instantiate per budget to reset internal state)
 # ---------------------------------------------------------------------------
 
-_ALL_AGENTS = ["SingleShot", "LoopAgent", "BudgetAware"]
-
-def _make_agents(budget: int, names: list[str] | None = None) -> dict:
+def _make_agents(budget: int, model: str = "gemini-2.5-flash") -> dict:
     from agents.single_shot import SingleShotAgent
     from agents.loop_agent import LoopAgent
     from agents.budget_aware import BudgetAwareAgent
-    all_agents = {
-        "SingleShot":  SingleShotAgent(),
-        "LoopAgent":   LoopAgent(),
-        "BudgetAware": BudgetAwareAgent(budget_total=budget),
+    return {
+        "SingleShot":  SingleShotAgent(model=model),
+        "LoopAgent":   LoopAgent(model=model),
+        "BudgetAware": BudgetAwareAgent(budget_total=budget, model=model),
     }
     if names:
         return {k: v for k, v in all_agents.items() if k in names}
@@ -159,8 +157,7 @@ def run_batch(
     output_dir: str,
     dataset_path: str = "data/swe-bench-lite",
     verbose: bool = False,
-    use_eval_image: bool = False,
-    agent_names: list[str] | None = None,
+    model: str = "gemini-2.5-flash",
 ) -> tuple[list[dict], dict]:
     """
     Run all agents × all issues × all budgets.
@@ -188,7 +185,7 @@ def run_batch(
             if env_name == "knapsack":
                 agents = _make_knapsack_agents()
             else:
-                agents = _make_agents(budget, names=agent_names)
+                agents = _make_agents(budget, model=model)
 
             for agent_name, agent in agents.items():
                 env = _make_env(env_name, issue_id, dataset_path, verbose=verbose, use_eval_image=use_eval_image)
@@ -335,6 +332,8 @@ def parse_args() -> argparse.Namespace:
                         "by a prior harness run)")
     p.add_argument("--output-dir", type=str, default="results",
                    help="Directory to write CSV/JSON/plots (default: results)")
+    p.add_argument("--model", type=str, default="gemini-2.5-flash",
+                   help="Gemini model for LLM agents (default: gemini-2.5-flash; try gemini-2.5-pro)")
     return p.parse_args()
 
 
@@ -371,8 +370,7 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         dataset_path=args.dataset_path,
         verbose=args.verbose,
-        use_eval_image=args.use_eval_image,
-        agent_names=args.agent,
+        model=args.model,
     )
 
     save_csv(rows, os.path.join(args.output_dir, "episodes.csv"))
