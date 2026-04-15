@@ -60,6 +60,8 @@ Run the repository's test suite to verify whether the bug is fixed.
 {"tool": "submit_patch", "patch": "<full unified diff>"}
 
 Submit the final patch once you believe the fix is correct.
+After calling edit, the observation includes "current_diff" showing all changes
+made so far. Copy that value directly into the "patch" field of submit_patch.
 
 
 
@@ -114,7 +116,9 @@ def _gemini_client() -> genai.Client:
 def _summarise_history(history: list[ToolCall]) -> str:
     lines = []
     for tc in history:
-        result_str = str(tc.result)[:300]
+        # Keep more context for inspect results (file content is critical)
+        limit = 4000 if tc.name == "inspect" else 500
+        result_str = str(tc.result)[:limit]
         lines.append(f"[{tc.name}] → {result_str}")
     return "\n".join(lines)
 
@@ -156,17 +160,31 @@ class LoopAgent(Agent):
                 or obs.get("issue", "No issue description provided.")
             )
 
-        # Force submit when budget is critical
-        if budget_remaining <= 3:
-            return {"tool": "submit_patch", "patch": ""}
+        # Count how many times we've already retried an empty patch
+        empty_retries = sum(
+            1 for tc in history
+            if tc.name == "search" and str(tc.args.get("query", "")).startswith("__empty_retry__")
+        )
 
         history_str = _summarise_history(history)
+
+        force_note = ""
+        if budget_remaining <= 3:
+            force_note = "\n\nBudget is almost gone. Call submit_patch NOW with your best patch."
+        elif empty_retries > 0:
+            force_note = (
+                f"\n\nYou have submitted an empty patch {empty_retries} time(s). "
+                "You MUST write actual code changes in the 'patch' field. "
+                "Based on the code you have read, write the fix as a unified diff now."
+            )
+
         prompt = (
             f"{_SYSTEM_PROMPT}\n\n"
             f"## Issue\n{self._issue_ctx}\n\n"
             f"## Tool call history\n{history_str or '(none yet)'}\n\n"
-            f"## Latest observation\n{json.dumps(obs, indent=2)[:1000]}\n\n"
-            f"Budget remaining: {budget_remaining}\n\n"
+            f"## Latest observation\n{json.dumps(obs, indent=2)[:4000]}\n\n"
+            f"Budget remaining: {budget_remaining}"
+            f"{force_note}\n\n"
             f"## Next action (JSON only)"
         )
 
@@ -199,7 +217,12 @@ class LoopAgent(Agent):
                         if first_line.strip() in ("", "diff", "patch", "python", "py"):
                             patch = patch[patch.index("\n")+1:]
                     action["patch"] = patch.strip()
+            # If patch is empty and we still have budget, retry once
+            if action.get("tool") == "submit_patch" and not action.get("patch"):
+                if budget_remaining > 3 and empty_retries < 2:
+                    return {"tool": "search", "query": f"__empty_retry__{empty_retries}__", "path": "."}
             return action
         except Exception:
-            # Fallback: submit with whatever we have
+            if budget_remaining > 3 and empty_retries < 2:
+                return {"tool": "search", "query": f"__empty_retry__{empty_retries}__", "path": "."}
             return {"tool": "submit_patch", "patch": ""}

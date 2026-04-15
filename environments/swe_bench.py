@@ -361,6 +361,11 @@ class _Sandbox:
         out = (r.stdout + r.stderr).strip()
         return r.returncode == 0, out[:3000]
 
+    def get_diff(self) -> str:
+        """Return the current unified diff of all working-tree changes."""
+        r = self._exec(["git", "diff"], check=False)
+        return (r.stdout or "").strip()
+
     def apply_patch(self, patch: str) -> tuple[bool, str]:
         """
         Dry-run then apply a patch string.  Returns (success, message).
@@ -569,7 +574,14 @@ class SWEBenchEnvironment(Environment):
             if not patch_hunk:
                 return {"error": "edit requires 'patch'"}, False
             ok, msg = self._sandbox.edit(patch_hunk)
-            return {"tool": "edit", "success": ok, "message": msg}, False
+            # Include current git diff so the agent can copy it into submit_patch
+            current_diff = self._sandbox.get_diff()
+            return {
+                "tool": "edit",
+                "success": ok,
+                "message": msg,
+                "current_diff": current_diff,
+            }, False
 
         # ---- run_tests ----------------------------------------------------
         if tool == "run_tests":
@@ -651,10 +663,10 @@ class SWEBenchEnvironment(Environment):
         #     use_harness = False
 
         # if use_harness:
+        import tempfile
+        import shutil
+        work_dir = None
         try:
-            import tempfile
-            import shutil
-            from pathlib import Path
 
             # Prepare a temporary directory for predictions and reports
             run_id = f"budgetbench_{self._issue['instance_id'].replace('/', '_')}"
@@ -746,11 +758,8 @@ class SWEBenchEnvironment(Environment):
                     return "PATCH_APPLY_FAIL"
                 # Unknown error, fall back to manual evaluation
         finally:
-            # Clean up temporary directory
-            try:
-                shutil.rmtree(work_dir, ignore_errors=True)  # type: ignore[name-defined]
-            except Exception:
-                pass
+            if work_dir is not None:
+                shutil.rmtree(work_dir, ignore_errors=True)
 
         # # Manual scoring path as a fallback
         # with _Sandbox(self._issue, self.docker_image) as oracle:
