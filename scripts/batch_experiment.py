@@ -44,11 +44,14 @@ from budgetbench.metrics import compute_report, auc_success_vs_budget
 # Agent factories (re-instantiate per budget to reset internal state)
 # ---------------------------------------------------------------------------
 
-def _make_agents(budget: int, model: str = "gemini-2.5-flash") -> dict:
+_ALL_AGENTS = ["SingleShot", "LoopAgent", "BudgetAware"]
+
+
+def _make_agents(budget: int, model: str = "gemini-2.5-flash", names: list | None = None) -> dict:
     from agents.single_shot import SingleShotAgent
     from agents.loop_agent import LoopAgent
     from agents.budget_aware import BudgetAwareAgent
-    return {
+    all_agents = {
         "SingleShot":  SingleShotAgent(model=model),
         "LoopAgent":   LoopAgent(model=model),
         "BudgetAware": BudgetAwareAgent(budget_total=budget, model=model),
@@ -158,6 +161,8 @@ def run_batch(
     dataset_path: str = "data/swe-bench-lite",
     verbose: bool = False,
     model: str = "gemini-2.5-flash",
+    agent_names: list | None = None,
+    use_eval_image: bool = False,
 ) -> tuple[list[dict], dict]:
     """
     Run all agents × all issues × all budgets.
@@ -185,7 +190,7 @@ def run_batch(
             if env_name == "knapsack":
                 agents = _make_knapsack_agents()
             else:
-                agents = _make_agents(budget, model=model)
+                agents = _make_agents(budget, model=model, names=agent_names)
 
             for agent_name, agent in agents.items():
                 env = _make_env(env_name, issue_id, dataset_path, verbose=verbose, use_eval_image=use_eval_image)
@@ -371,6 +376,8 @@ if __name__ == "__main__":
         dataset_path=args.dataset_path,
         verbose=args.verbose,
         model=args.model,
+        agent_names=args.agent,
+        use_eval_image=args.use_eval_image,
     )
 
     save_csv(rows, os.path.join(args.output_dir, "episodes.csv"))

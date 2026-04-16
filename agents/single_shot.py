@@ -12,9 +12,8 @@ from __future__ import annotations
 
 import os
 
-from google import genai
-
 from budgetbench.interfaces import Agent, ToolCall
+from agents._gemini import generate_with_retry
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 
@@ -23,17 +22,6 @@ You are an expert software engineer.
 Given a GitHub issue and repository context, produce a minimal unified-diff
 patch that resolves the issue.
 Output ONLY the unified diff. No explanation, no markdown fences."""
-
-
-def _gemini_client() -> genai.Client:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if api_key:
-        return genai.Client(api_key=api_key)
-    return genai.Client(
-        vertexai=True,
-        project=os.environ.get("GOOGLE_CLOUD_PROJECT", "ai-agent-for-engineers"),
-        location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
-    )
 
 
 class SingleShotAgent(Agent):
@@ -83,11 +71,6 @@ class SingleShotAgent(Agent):
             + "## Patch"
         )
 
-        client = _gemini_client()
-        response = client.models.generate_content(
-            model=self.model,
-            contents=prompt,
-        )
-        patch = response.text.strip() if response.text else ""
+        patch = generate_with_retry(self.model, prompt).strip()
 
         return {"tool": "submit_patch", "patch": patch}
