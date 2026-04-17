@@ -1,31 +1,35 @@
 """
 BudgetBench — BudgetAwareAgent  (Track B · Task B3)  ★ Key Novelty
 ====================================================================
-The budget-aware agent monitors ``budget_remaining`` in real time and
-switches strategy as the budget shrinks.
+Subclasses _BaseLoopAgent and overrides three hooks to add budget-regime
+strategy switching.  All loop logic (inspect→edit→test, force notes,
+action interception) is inherited unchanged from the base class.
 
 Budget regimes
 --------------
-HIGH   (remaining > 0.6 × total):  thorough exploration
-        - broad search, multiple file inspections, run_tests allowed
-MEDIUM (0.3 < remaining ≤ 0.6):   focused mode
-        - targeted search, minimal inspections, no run_tests
-LOW    (remaining ≤ 0.3):          emergency mode
-        - skip exploration, submit best patch constructed so far
+HIGH   (remaining > 0.6 × total):  thorough — run_tests allowed
+MEDIUM (0.3 < remaining ≤ 0.6):   focused  — run_tests blocked (cost = 3×)
+LOW    (remaining ≤ 0.3):          emergency — skip loop, submit immediately
 
-This is the primary technical contribution of BudgetBench.
+Difference from LoopAgent
+--------------------------
+- _regime_section()  : adds a "## Current regime" block to the prompt
+- _pre_act()         : short-circuits to submit in LOW regime
+- _allow_run_tests() : returns False in MEDIUM regime to save budget
 """
 
 from __future__ import annotations
 
-import json
-import os
+from budgetbench.interfaces import ToolCall
+from agents.loop_agent import (
+    _BaseLoopAgent,
+    _DEFAULT_MODEL,
+    _extract_current_diff,
+    _force_generate_patch,
+    _is_patch_complete,
+)
 
-from budgetbench.interfaces import Agent, ToolCall
-from agents._gemini import generate_with_retry
 
-
-_DEFAULT_MODEL    = "gemini-2.5-flash"
 _HIGH_THRESHOLD   = 0.6
 _MEDIUM_THRESHOLD = 0.3
 
@@ -38,102 +42,19 @@ _REGIME_INSTRUCTIONS = {
     ),
     "MEDIUM": (
         "Budget is limited. Stay focused:\n"
-        "- Do targeted search only — no broad exploration\n"
-        "- Avoid run_tests (costs 3 budget)\n"
-        "- Move toward submitting a patch"
+        "- Do targeted search/inspect only\n"
+        "- run_tests is BLOCKED (costs 3 budget units) — skip it\n"
+        "- Move directly toward submitting a patch after editing"
     ),
     "LOW": (
         "Budget is critical. Submit immediately:\n"
-        "- Do NOT call any exploration tools\n"
-        "- Submit the best patch you can based on what you know\n"
-        "- Use submit_patch NOW"
+        "- Do NOT call any exploration or test tools\n"
+        "- Submit the best patch you can based on what you know"
     ),
 }
 
-_SYSTEM_PROMPT = """\
-You are an expert software engineer working inside a code repository.
-Fix the given GitHub issue by exploring the codebase and producing a patch.
 
-At each step output a JSON object (and ONLY that JSON object):
-
-  {"tool": "search",   "query": "<keyword>", "path": "<optional subdir>"}
-  {"tool": "inspect",  "file": "<path>", "start": <int>, "end": <int>}
-  {"tool": "hierarchy", "depth": <int>}
-  {"tool": "edit",     "patch": "<unified diff hunk>"}
-  {"tool": "run_tests"}
-  {"tool": "submit_patch", "patch": "<full unified diff>"}"""
-
-
-def _summarise_history(history: list[ToolCall], max_chars: int = 6000) -> str:
-    lines = []
-    for tc in history:
-        limit = 4000 if tc.name in ("inspect", "edit", "run_tests") else 500
-        result_str = str(tc.result)[:limit]
-        lines.append(f"[{tc.name}] → {result_str}")
-    full = "\n".join(lines)
-    return full[-max_chars:] if len(full) > max_chars else full
-
-
-def _has_tested_after_last_edit(history: list[ToolCall]) -> bool:
-    last_edit_idx = -1
-    for i, tc in enumerate(history):
-        if tc.name == "edit":
-            last_edit_idx = i
-    if last_edit_idx == -1:
-        return False
-    return any(tc.name == "run_tests" for tc in history[last_edit_idx + 1:])
-
-
-def _extract_current_diff(history: list[ToolCall]) -> str:
-    """Return the latest current_diff from an edit call, or empty string."""
-    for tc in reversed(history):
-        if tc.name == "edit" and isinstance(tc.result, dict):
-            diff = tc.result.get("current_diff", "")
-            if diff:
-                return diff
-    return ""
-
-
-_FORCE_PATCH_PROMPT = """\
-You are an expert software engineer. Based on the code you have read, write a \
-unified diff patch that fixes the issue below.
-
-Output ONLY the unified diff. No JSON, no explanation, no markdown fences.
-The diff must start with '--- ' and use standard unified diff format.
-
-## Issue
-{issue}
-
-## Code you have read
-{code_seen}
-
-## Patch"""
-
-
-def _force_generate_patch(model: str, issue: str, history: list[ToolCall]) -> str:
-    """Make a focused LLM call to generate a unified diff when normal path fails."""
-    code_parts = []
-    for tc in history:
-        if tc.name in ("inspect", "search", "edit"):
-            result_str = str(tc.result)[:3000]
-            code_parts.append(f"[{tc.name}]\n{result_str}")
-    code_seen = "\n\n".join(code_parts[-6:])
-
-    prompt = _FORCE_PATCH_PROMPT.format(issue=issue, code_seen=code_seen)
-    raw = generate_with_retry(model, prompt).strip()
-
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if "\n" in raw:
-            raw = raw[raw.index("\n")+1:]
-        raw = raw.strip()
-
-    if raw.startswith("---") or raw.startswith("diff --git"):
-        return raw
-    return ""
-
-
-class BudgetAwareAgent(Agent):
+class BudgetAwareAgent(_BaseLoopAgent):
     """
     Budget-adaptive agent — the key novelty of this project.
 
@@ -142,7 +63,7 @@ class BudgetAwareAgent(Agent):
     model : str
         Gemini model identifier.
     budget_total : int
-        Total budget declared upfront. Inferred from first act() call if 0.
+        Total budget declared upfront. Inferred from the first act() call if 0.
     """
 
     def __init__(
@@ -150,9 +71,10 @@ class BudgetAwareAgent(Agent):
         model:        str = _DEFAULT_MODEL,
         budget_total: int = 0,
     ) -> None:
-        self.model         = model
+        super().__init__(model)
         self._budget_total = budget_total
-        self._issue_ctx:   str = ""
+
+    # ── regime calculation ────────────────────────────────────────────────
 
     def _regime(self, budget_remaining: int) -> str:
         total = self._budget_total or 1
@@ -163,105 +85,34 @@ class BudgetAwareAgent(Agent):
             return "MEDIUM"
         return "LOW"
 
-    def act(
-        self,
-        obs:              dict,
-        budget_remaining: int,
-        history:          list[ToolCall],
-    ) -> dict:
-        # Infer total budget on first call
+    # ── hook overrides ────────────────────────────────────────────────────
+
+    def _regime_section(self, budget_remaining: int) -> str:
+        regime = self._regime(budget_remaining)
+        return (
+            f"## Current budget regime: {regime}\n"
+            f"{_REGIME_INSTRUCTIONS[regime]}"
+        )
+
+    def _pre_act(
+        self, budget_remaining: int, history: list[ToolCall]
+    ) -> dict | None:
+        # Infer total budget on the very first real call
         if self._budget_total == 0:
             self._budget_total = budget_remaining
 
-        # Capture issue context on first call
-        if not history:
-            self._issue_ctx = (
-                obs.get("problem_statement")
-                or obs.get("issue", "No issue description provided.")
-            )
-
-        regime = self._regime(budget_remaining)
-        has_edited        = any(tc.name == "edit" for tc in history)
-        has_inspected     = any(tc.name == "inspect" for tc in history)
-        tested_after_edit = _has_tested_after_last_edit(history)
-
-        # LOW: skip normal LLM loop, submit best available patch
-        if regime == "LOW":
+        if self._regime(budget_remaining) == "LOW":
+            # Emergency: submit whatever we have, no further LLM call
             saved_diff = _extract_current_diff(history)
             if saved_diff:
                 return {"tool": "submit_patch", "patch": saved_diff}
             forced = _force_generate_patch(self.model, self._issue_ctx, history)
-            return {"tool": "submit_patch", "patch": forced}
-
-        regime_instruction = _REGIME_INSTRUCTIONS[regime]
-        history_str        = _summarise_history(history)
-
-        force_note = ""
-        if has_inspected and not has_edited:
-            force_note = (
-                "\n\nYou have inspected the code but have NOT called edit yet. "
-                "You MUST call edit with a unified diff to make the actual change. "
-                "Do NOT call submit_patch before calling edit."
-            )
-        elif has_edited and not tested_after_edit and regime == "HIGH":
-            force_note = (
-                "\n\nYou have made an edit but have NOT run tests yet. "
-                "Call run_tests to verify your fix."
-            )
-
-        prompt = (
-            f"{_SYSTEM_PROMPT}\n\n"
-            f"## Current budget regime: {regime}\n{regime_instruction}\n\n"
-            f"## Issue\n{self._issue_ctx}\n\n"
-            f"## Tool call history\n{history_str or '(none yet)'}\n\n"
-            f"## Latest observation\n{json.dumps(obs, indent=2)[:4000]}\n\n"
-            f"Budget remaining: {budget_remaining} / {self._budget_total}"
-            f"{force_note}\n\n"
-            f"## Next action (JSON only)"
-        )
-
-        raw = generate_with_retry(self.model, prompt).strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-            raw = raw.strip()
-
-        try:
-            action = json.loads(raw)
-            if "tool" not in action:
-                raise ValueError("Missing 'tool' key")
-            # In MEDIUM regime, block run_tests to save budget
-            if regime == "MEDIUM" and action.get("tool") == "run_tests":
-                action = {"tool": "submit_patch", "patch": ""}
-            if action.get("tool") == "submit_patch":
-                # Step 1: must have edited
-                if not has_edited and budget_remaining > 2:
-                    diff = action.get("patch", "") or _force_generate_patch(
-                        self.model, self._issue_ctx, history
-                    )
-                    if diff:
-                        return {"tool": "edit", "patch": diff}
-
-                # Step 2: must run tests after edit (HIGH regime only — MEDIUM saves budget)
-                if has_edited and not tested_after_edit and regime == "HIGH" and budget_remaining > 3:
-                    return {"tool": "run_tests"}
-
-                # Step 3: submit using git diff as ground truth
-                saved_diff = _extract_current_diff(history)
-                if saved_diff:
-                    return {"tool": "submit_patch", "patch": saved_diff}
-
-                if not action.get("patch") and budget_remaining > 2:
-                    forced = _force_generate_patch(self.model, self._issue_ctx, history)
-                    if forced:
-                        return {"tool": "submit_patch", "patch": forced}
-            return action
-        except Exception:
-            saved_diff = _extract_current_diff(history)
-            if saved_diff:
-                return {"tool": "submit_patch", "patch": saved_diff}
-            if budget_remaining > 2:
-                forced = _force_generate_patch(self.model, self._issue_ctx, history)
+            if forced and _is_patch_complete(forced):
                 return {"tool": "submit_patch", "patch": forced}
             return {"tool": "submit_patch", "patch": ""}
+
+        return None  # proceed with normal loop
+
+    def _allow_run_tests(self, budget_remaining: int) -> bool:
+        # run_tests costs 3× — skip it in MEDIUM and LOW regimes
+        return self._regime(budget_remaining) == "HIGH"

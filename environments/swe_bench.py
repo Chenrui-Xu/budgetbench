@@ -134,6 +134,11 @@ def _is_unified_diff(patch: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Test helpers
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
 # Docker sandbox
 # ---------------------------------------------------------------------------
 
@@ -200,10 +205,13 @@ class _Sandbox:
 
         if self._use_eval_image:
             # Eval image already has the repo at /testbed at base_commit with
-            # all dependencies installed.  Just reset to a clean state.
+            # all dependencies installed.  Reset source files but keep compiled
+            # extensions (.so, __pycache__) so the installed package stays intact.
+            # -fd removes untracked files/dirs; omitting -x preserves .gitignored
+            # build artifacts that the editable install depends on.
             self._log("[Sandbox] Eval image — resetting to base commit %s", base)
             self._exec(["git", "reset", "--hard", base], check=False)
-            self._exec(["git", "clean", "-fdx"],         check=False)
+            self._exec(["git", "clean", "-fd"],          check=False)
             self._log("[Sandbox] Repo ready (eval image)")
         else:
             # Fallback image: install git, clone repo, checkout base commit.
@@ -238,13 +246,24 @@ class _Sandbox:
             r = self._exec(["git", "checkout", base], check=False)
             if r.returncode != 0:
                 self._log("[Sandbox] Shallow clone missing commit, fetching: %s", r.stderr.strip()[:200])
-                self._exec(["git", "fetch", "--unshallow"], timeout=600, check=False)
+                # Prefer a targeted fetch of just the missing commit rather than
+                # --unshallow (which can fail with "unable to read tree" when the
+                # remote returns incomplete pack data for the full history).
+                r2 = self._exec(
+                    ["git", "fetch", "--depth=1", "origin", base],
+                    timeout=300, check=False,
+                )
+                self._log("[Sandbox] targeted fetch rc=%d", r2.returncode)
+                if r2.returncode != 0:
+                    # Fall back to full unshallow as a last resort
+                    self._log("[Sandbox] targeted fetch failed, trying --unshallow")
+                    self._exec(["git", "fetch", "--unshallow"], timeout=600, check=False)
                 r = self._exec(["git", "checkout", base], check=False)
-                self._log("[Sandbox] checkout after unshallow rc=%d", r.returncode)
+                self._log("[Sandbox] checkout after fetch rc=%d", r.returncode)
             else:
                 self._log("[Sandbox] checkout rc=%d", r.returncode)
             self._exec(["git", "reset", "--hard", base], check=False)
-            self._exec(["git", "clean", "-fdx"],         check=False)
+            self._exec(["git", "clean", "-fd"],          check=False)
             self._log("[Sandbox] Repo ready")
 
     def stop(self) -> None:
@@ -259,7 +278,7 @@ class _Sandbox:
         """Discard all working-tree changes."""
         base = self._issue.get("base_commit", "HEAD")
         self._exec(["git", "reset", "--hard", base], check=False)
-        self._exec(["git", "clean", "-fdx"],          check=False)
+        self._exec(["git", "clean", "-fd"],           check=False)
 
     def __enter__(self) -> "_Sandbox":
         self.start()
@@ -305,10 +324,18 @@ class _Sandbox:
     # Tool implementations
     # ------------------------------------------------------------------
 
-    def search(self, query: str, path: str = ".") -> str:
-        self._log("[Sandbox.search] query=%r path=%r", query, path)
+    def search(self, query: str, path: str = ".", include: str = "*.py") -> str:
+        self._log("[Sandbox.search] query=%r path=%r include=%r", query, path, include)
+        # Build --include flags (comma-separated globs allowed, e.g. "*.py,*.cfg")
+        include_flags: list[str] = []
+        for glob in include.split(","):
+            glob = glob.strip()
+            if glob:
+                include_flags += [f"--include={glob}"]
+        if not include_flags:
+            include_flags = ["--include=*.py"]
         r = self._exec(
-            ["grep", "-rn", "--include=*.py", "-i", "--", query, path],
+            ["grep", "-rn", "-i"] + include_flags + ["--", query, path],
             check=False,
         )
         out = (r.stdout or "").strip()
@@ -341,8 +368,16 @@ class _Sandbox:
         )
         return (r.stdout or "").strip()[:3000]
 
-    def edit(self, patch_hunk: str) -> tuple[bool, str]:
-        """Apply a unified-diff hunk to the working tree."""
+    def edit(self, patch_hunk: str) -> tuple[bool, str, str]:
+        """Apply a unified-diff hunk to the working tree.
+
+        Returns
+        -------
+        (success, message, post_edit_snippet)
+            post_edit_snippet is the current file content around the modified
+            area after a successful apply — so the agent can see the actual
+            post-edit state without a separate inspect call.
+        """
         patch_file = f"/tmp/edit_{os.urandom(4).hex()}.patch"
         self._write(patch_file, patch_hunk)
         r = self._exec(
@@ -350,16 +385,125 @@ class _Sandbox:
             check=False,
         )
         if r.returncode == 0:
-            return True, "Patch applied."
-        return False, r.stderr.strip()
+            snippet = self._post_edit_snippet(patch_hunk)
+            return True, "Patch applied.", snippet
 
-    def run_tests(self, test_cmd: Optional[str] = None) -> tuple[bool, str]:
-        """Run FAIL_TO_PASS tests. Returns (all_passed, truncated_output)."""
+        err = r.stderr.strip()
+
+        # Try to extract the file and line number from the error so the agent
+        # can re-inspect the correct area and generate accurate context lines.
+        # git apply errors look like: "error: patch failed: path/to/file.py:N"
+        hint = ""
+        import re as _re
+        m = _re.search(r"patch failed: (.+?):(\d+)", err)
+        if m:
+            failed_file = m.group(1)
+            failed_line = int(m.group(2))
+            start = max(1, failed_line - 3)
+            end   = failed_line + 10
+            snippet = self.inspect(failed_file, start, end)
+            hint = (
+                f"\nHint: context mismatch near {failed_file}:{failed_line}. "
+                f"Actual lines {start}-{end}:\n{snippet}"
+            )
+
+        return False, err + hint, ""
+
+    def _post_edit_snippet(self, patch_hunk: str) -> str:
+        """Read back the modified area from the file after a successful edit.
+
+        Parses the first '+++' file and first '@@ ... +N,M @@' hunk header to
+        determine where to inspect, then returns ~20 lines of context.
+        """
+        # Find the modified file path from '+++ b/<path>' or '+++ <path>'
+        m_file = re.search(r"^\+\+\+ b/(.+)$", patch_hunk, re.MULTILINE)
+        if not m_file:
+            m_file = re.search(r"^\+\+\+ (.+)$", patch_hunk, re.MULTILINE)
+        if not m_file:
+            return ""
+        file_path = m_file.group(1).strip()
+        if file_path in ("/dev/null", "dev/null"):
+            return ""
+
+        # Find the first hunk header '@@ -old +new,count @@'
+        m_hunk = re.search(
+            r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@",
+            patch_hunk, re.MULTILINE,
+        )
+        if not m_hunk:
+            return ""
+
+        new_start = int(m_hunk.group(1))
+        new_count = int(m_hunk.group(2) or "1")
+
+        read_start = max(1, new_start - 3)
+        read_end   = new_start + new_count + 5
+
+        return self.inspect(file_path, read_start, read_end)
+
+    def run_tests(self, test_cmd: Optional[str] = None) -> tuple[str, str]:
+        """Run FAIL_TO_PASS tests.
+
+        Returns
+        -------
+        (status, output)
+            status is one of:
+              "passed"  — all tests ran and passed
+              "failed"  — tests ran but at least one failed
+              "not_run" — environment/collection error, no tests actually executed
+        """
         if test_cmd is None:
             test_cmd = self._default_test_cmd()
         r = self._exec(["bash", "-c", test_cmd], timeout=180, check=False)
         out = (r.stdout + r.stderr).strip()
-        return r.returncode == 0, out[:3000]
+
+        lower = out.lower()
+        not_run = (
+            "no tests ran" in lower
+            or "no module named pytest" in lower
+            or r.returncode == 5   # pytest: no tests collected
+            or (
+                ("error: not found" in lower or "not found" in lower)
+                and "passed" not in lower
+                and "failed" not in lower
+            )
+        )
+        if not_run:
+            status = "not_run"
+        elif r.returncode == 0:
+            status = "passed"
+        else:
+            status = "failed"
+
+        return status, out[:3000]
+
+    def run_script(self, script: str) -> tuple[str, str]:
+        """Run an arbitrary Python script inside the sandbox.
+
+        Returns (status, output) with the same three-way status as run_tests.
+        Use this when run_tests returns "not_run" — write a minimal script
+        that imports the fixed code and asserts the expected behaviour.
+        """
+        script_file = f"/tmp/verify_{os.urandom(4).hex()}.py"
+        self._write(script_file, script)
+        r = self._exec(
+            ["conda", "run", "-n", "testbed", "python", script_file],
+            timeout=60, check=False,
+        )
+        out = (r.stdout + r.stderr).strip()
+        lower = out.lower()
+        not_run = (
+            "no module named" in lower
+            or "importerror" in lower
+            or "modulenotfounderror" in lower
+        ) and r.returncode != 0 and "assertionerror" not in lower
+        if not_run:
+            status = "not_run"
+        elif r.returncode == 0:
+            status = "passed"
+        else:
+            status = "failed"
+        return status, out[:2000]
 
     def get_diff(self) -> str:
         """Return the current unified diff of all working-tree changes."""
@@ -393,10 +537,17 @@ class _Sandbox:
                 fail_to_pass = json.loads(fail_to_pass)
             except json.JSONDecodeError:
                 fail_to_pass = []
+
         if fail_to_pass:
-            tests = " ".join(fail_to_pass)
-            return f"python -m pytest {tests} -x -q --tb=short 2>&1"
-        return "python -m pytest -x -q --tb=short 2>&1"
+            specific = " ".join(fail_to_pass)
+            # Fallback: run the test files broadly in case specific test IDs
+            # don't exist at base_commit (new tests added by the gold patch).
+            test_files = " ".join(dict.fromkeys(t.split("::")[0] for t in fail_to_pass))
+            return (
+                f"conda run -n testbed python -m pytest {specific} -x -q --tb=short 2>&1 "
+                f"|| conda run -n testbed python -m pytest {test_files} -x -q --tb=short 2>&1"
+            )
+        return "conda run -n testbed python -m pytest -x -q --tb=short 2>&1"
 
     @staticmethod
     def _pick_image(instance_id: str, fallback: str) -> str:
@@ -510,6 +661,21 @@ class SWEBenchEnvironment(Environment):
         self._sandbox.start()
         self._submitted_patch = ""
 
+        # Pre-fetch repo structure so the agent starts with full context
+        # (depth=3 keeps it readable; no budget cost since it's in reset)
+        repo_tree = self._sandbox.hierarchy(depth=3)
+
+        # Extract test file paths from FAIL_TO_PASS so the agent can inspect
+        # them before calling run_tests (specific test IDs may not exist yet
+        # at base_commit if they were added by the gold patch).
+        fail_to_pass = self._issue.get("FAIL_TO_PASS", [])
+        if isinstance(fail_to_pass, str):
+            try:
+                fail_to_pass = json.loads(fail_to_pass)
+            except json.JSONDecodeError:
+                fail_to_pass = []
+        test_files = list(dict.fromkeys(t.split("::")[0] for t in fail_to_pass))
+
         return {
             "task":              "swe_bench",
             "instance_id":       self._issue["instance_id"],
@@ -517,6 +683,8 @@ class SWEBenchEnvironment(Environment):
             "problem_statement": self._issue.get("problem_statement", ""),
             "hints_text":        self._issue.get("hints_text", ""),
             "repo_dir":          _REPO_DIR,
+            "repo_tree":         repo_tree,
+            "test_files":        test_files,
             "message": (
                 "Repository ready at pre-patch commit. Use search / inspect / "
                 "hierarchy to explore, edit to modify files, run_tests to "
@@ -534,14 +702,15 @@ class SWEBenchEnvironment(Environment):
 
         # ---- search -------------------------------------------------------
         if tool == "search":
-            query = action.get("query", "")
-            path  = action.get("path", ".")
+            query   = action.get("query", "")
+            path    = action.get("path", ".")
+            include = action.get("include", "*.py")
             if not query:
                 return {"error": "search requires 'query'"}, False
             return {
                 "tool":   "search",
                 "query":  query,
-                "output": self._sandbox.search(query, path),
+                "output": self._sandbox.search(query, path, include),
             }, False
 
         # ---- inspect ------------------------------------------------------
@@ -573,24 +742,45 @@ class SWEBenchEnvironment(Environment):
             patch_hunk = action.get("patch", "")
             if not patch_hunk:
                 return {"error": "edit requires 'patch'"}, False
-            ok, msg = self._sandbox.edit(patch_hunk)
+            ok, msg, post_snippet = self._sandbox.edit(patch_hunk)
             # Include current git diff so the agent can copy it into submit_patch
             current_diff = self._sandbox.get_diff()
-            return {
-                "tool": "edit",
-                "success": ok,
-                "message": msg,
+            obs: dict = {
+                "tool":         "edit",
+                "success":      ok,
+                "message":      msg,
                 "current_diff": current_diff,
-            }, False
+            }
+            if ok and post_snippet:
+                obs["post_edit_content"] = post_snippet
+            return obs, False
 
         # ---- run_tests ----------------------------------------------------
         if tool == "run_tests":
             test_cmd = action.get("cmd")
-            passed, output = self._sandbox.run_tests(test_cmd)
+            run_status, output = self._sandbox.run_tests(test_cmd)
+            print(f"  [run_tests] {run_status.upper()} | {self.issue_id}")
+            print(f"  {output[:500]}")
             return {
-                "tool":   "run_tests",
-                "passed": passed,
-                "output": output,
+                "tool":       "run_tests",
+                "run_status": run_status,           # "passed" / "failed" / "not_run"
+                "passed":     run_status == "passed",  # backward compat
+                "output":     output,
+            }, False
+
+        # ---- run_script ---------------------------------------------------
+        if tool == "run_script":
+            script = action.get("script", "")
+            if not script:
+                return {"error": "run_script requires 'script'"}, False
+            run_status, output = self._sandbox.run_script(script)
+            print(f"  [run_script] {run_status.upper()} | {self.issue_id}")
+            print(f"  {output[:500]}")
+            return {
+                "tool":       "run_script",
+                "run_status": run_status,
+                "passed":     run_status == "passed",
+                "output":     output,
             }, False
 
         # ---- submit_patch -------------------------------------------------
