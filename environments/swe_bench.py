@@ -912,8 +912,8 @@ class SWEBenchEnvironment(Environment):
                                 return "OK_SOLVED"
                             if instance_id in report_data.get("error_ids", []):
                                 # error_ids = harness runtime error (Docker,
-                                # patch apply, infra, …).  Log the instance
-                                # log for post-mortem and return TEST_FAIL.
+                                # patch apply, infra, …).  Log and fall
+                                # through to manual scoring.
                                 instance_log = (
                                     work_dir / "logs" / "run_evaluation"
                                     / run_id / "budgetbench-env"
@@ -922,8 +922,9 @@ class SWEBenchEnvironment(Environment):
                                 if instance_log.exists():
                                     tail = instance_log.read_text(encoding="utf-8", errors="replace")[-2000:]
                                     logger.warning("[run_instance.log tail]\n%s", tail)
+                                logger.warning("Harness error for %s — trying manual scoring", instance_id)
+                            else:
                                 return "TEST_FAIL"
-                            return "TEST_FAIL"
 
                         # Format B: per-instance report
                         #   {"resolved": true/false, "patch_successfully_applied": ...}
@@ -951,32 +952,36 @@ class SWEBenchEnvironment(Environment):
             if work_dir is not None:
                 shutil.rmtree(work_dir, ignore_errors=True)
 
-        # # Manual scoring path as a fallback
-        # with _Sandbox(self._issue, self.docker_image) as oracle:
-        #     # Attempt to apply the patch
-        #     applied, _msg = oracle.apply_patch(patch)
-        #     if not applied:
-        #         return "PATCH_APPLY_FAIL"
+        # Manual scoring fallback
+        logger.warning("Using manual scoring fallback for %s", self._issue["instance_id"])
+        try:
+            with _Sandbox(self._issue, self.docker_image,
+                          use_eval_image=self.use_eval_image,
+                          verbose=self.verbose) as oracle:
+                applied, _msg = oracle.apply_patch(patch)
+                if not applied:
+                    return "PATCH_APPLY_FAIL"
 
-        #     # Run FAIL_TO_PASS tests (bug-triggering tests)
-        #     passed, _out = oracle.run_tests()
-        #     if not passed:
-        #         return "TEST_FAIL"
+                passed, _out = oracle.run_tests()
+                if not passed:
+                    return "TEST_FAIL"
 
-        #     # Run PASS_TO_PASS regression tests (should still pass)
-        #     p2p_tests = self._issue.get("PASS_TO_PASS", [])
-        #     if isinstance(p2p_tests, str):
-        #         try:
-        #             p2p_tests = json.loads(p2p_tests)
-        #         except json.JSONDecodeError:
-        #             p2p_tests = []
-        #     if p2p_tests:
-        #         regression_cmd = "python -m pytest " + " ".join(p2p_tests) + " -x -q --tb=short 2>&1"
-        #         regression_ok, _rout = oracle.run_tests(regression_cmd)
-        #         if not regression_ok:
-        #             return "TEST_FAIL"
-        print("Warning: SWE-bench harness not available; falling back to manual scoring.")
-        return "TEST_FAIL"
+                p2p_tests = self._issue.get("PASS_TO_PASS", [])
+                if isinstance(p2p_tests, str):
+                    try:
+                        p2p_tests = json.loads(p2p_tests)
+                    except json.JSONDecodeError:
+                        p2p_tests = []
+                if p2p_tests:
+                    regression_cmd = "python -m pytest " + " ".join(p2p_tests) + " -x -q --tb=short 2>&1"
+                    regression_ok, _rout = oracle.run_tests(regression_cmd)
+                    if not regression_ok:
+                        return "TEST_FAIL"
+
+            return "OK_SOLVED"
+        except Exception as exc:
+            logger.warning("Manual scoring failed: %s", exc)
+            return "TEST_FAIL"
 
     # ------------------------------------------------------------------
     # Convenience helpers
