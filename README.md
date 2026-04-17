@@ -71,7 +71,7 @@ pip install swebench datasets
 
 # Step 2: build Docker images for target issues
 python -m swebench.harness.docker_build \
-    --instance_ids astropy__astropy-12907 \
+    --num-issues 5 \
     --dataset_name princeton-nlp/SWE-bench_Lite
 
 # Step 3: run batch experiment
@@ -80,6 +80,7 @@ python scripts/batch_experiment.py \
     --env swe \
     --budget 10 20 \
     --num-issues 5 \
+    --use-eval-image
     --output-dir results/swe_paper
 ```
 
