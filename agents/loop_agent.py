@@ -13,11 +13,6 @@ import json
 
 from budgetbench.interfaces import Agent, ToolCall
 from agents._gemini import generate_with_retry
-from agents._shared import (
-    has_tested_after_last_edit as _has_tested_after_last_edit,
-    extract_current_diff as _extract_current_diff,
-    force_generate_patch as _force_generate_patch,
-)
 
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
