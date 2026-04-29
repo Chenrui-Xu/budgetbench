@@ -29,6 +29,7 @@ paper/*.blg
 paper/*.synctex.gz
 paper/*.fdb_latexmk
 paper/*.fls
+paper/acs-main.bib
 paper/figures/*.aux
 paper/figures/*.log
 slides/*.aux
