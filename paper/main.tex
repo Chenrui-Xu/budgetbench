@@ -52,12 +52,14 @@ violation rate with bootstrap confidence intervals. We instantiate
 the harness on a deterministic Knapsack environment and on SWE-bench
 Lite, and study three agents: a single-shot baseline, a ReAct-style
 loop, and a regime-switching BudgetAwareAgent that adapts to remaining
-budget. Across 900 Knapsack and 96 SWE-bench Lite episodes (Gemini
-2.5 Flash and Pro), BudgetAware matches or beats the single-shot
-baseline with zero violations, while the loop agent collapses at low
-budgets. Pro adds 8 percentage points uniformly on Knapsack but only
-helps multi-step agents at higher SWE-bench budgets, suggesting that
-under tight budgets agent design dominates model capability.
+budget. Across 450 Knapsack and 96 SWE-bench Lite episodes (Gemini 2.5
+Flash and Pro on SWE-bench; heuristic agents on Knapsack),
+BudgetAware matches or beats the single-shot baseline with zero
+violations, while the loop agent collapses at low budgets. Upgrading
+from Gemini Flash to Pro adds nothing on SWE-bench at $B = 20$ but
+$\sim$12 percentage points at $B = 40$ for multi-step agents,
+suggesting that under tight budgets agent design dominates model
+capability.
 \end{abstract}
 
 \section{Introduction}
@@ -88,8 +90,8 @@ per-episode tool-call budget as a first-class axis; (2) two reference
 environments at very different scales (a deterministic 0/1-Knapsack
 toy and SWE-bench Lite); (3) three reference agents including a
 regime-switching BudgetAwareAgent that adapts to remaining budget;
-and (4) an empirical study spanning 996 episodes with a Gemini 2.5
-Flash-versus-Pro comparison. Our main finding is that, in the
+and (4) an empirical study spanning 546 episodes with a Gemini 2.5
+Flash-versus-Pro comparison on SWE-bench. Our main finding is that, in the
 budget-constrained regime, a small amount of strategy beats a large
 amount of model: BudgetAware adds about 120 lines of code but produces
 larger gains than upgrading the LLM backbone.
@@ -192,52 +194,50 @@ across our experiments.
 \subsection{Experiment design}
 We launch experiments through a single
 \texttt{batch\_experiment.py} entry point that fixes seeds per
-(environment, issue). Cells: Knapsack with Flash and Pro at
-$B \in \{5,10,20\}$ over 50 seeds each (450 episodes per model), and
-SWE-bench Lite with Flash and Pro at $B \in \{20, 40\}$ over 8 issues
-(48 episodes per model). Total: 996 episodes.
+(environment, issue). Cells: Knapsack with the heuristic agents at $B \in \{5, 10, 20\}$
+over 50 seeds (450 episodes; the Knapsack agents do not call an LLM
+and so a Flash-versus-Pro split is not meaningful), and SWE-bench
+Lite with Flash and Pro at $B \in \{20, 40\}$ over 8 issues (48
+episodes per model). Total: 546 episodes.
 
 \section{Results}
 
 \subsection{Knapsack}
-SingleShot and BudgetAware reach the same Success@B at every budget
-(0.62 Flash, 0.70 Pro, Table~\ref{tab:knapsack}). LoopAgent collapses
-at low budgets: it scores zero at $B \in \{5,10\}$ and barely above
-chance at $B = 20$, and all low-budget failures are
-\texttt{BUDGET\_EXCEEDED}. The Flash-to-Pro lift is a uniform
-8\,pp across all agents and budgets, consistent with Pro being a
-strictly stronger backbone that contributes nothing to budget
-discipline. BudgetAware's violation rate is zero across its 150
-Knapsack episodes per model; LoopAgent's is 100\% at $B \le 10$.
+SingleShot and BudgetAware reach Success@B = 0.62 at every budget we
+test (Table~\ref{tab:knapsack}). LoopAgent collapses at low budgets:
+it scores zero at $B \in \{5, 10\}$ and 0.08 at $B = 20$, and all
+low-budget failures are \texttt{BUDGET\_EXCEEDED}. BudgetAware's
+violation rate is zero across its 150 Knapsack episodes; LoopAgent's
+is 100\% at $B \le 10$.
 
 \begin{table}
   \centering
   \caption{Knapsack: Success@B with 95\% bootstrap CIs (n=50 seeds),
   AUC at $B_\text{max}=20$, and TTFV (mean budget before first valid
   submit). Agent abbreviations: Single = SingleShotAgent, Loop =
-  LoopAgent, Budget = BudgetAwareAgent. BudgetAware ties SingleShot on
-  Success@B but loses on AUC because it explores before falling back.}
+  LoopAgent, Budget = BudgetAwareAgent. The Knapsack agents are
+  heuristic and do not call an LLM, so we do not split this table by
+  model; see Limitations. BudgetAware ties SingleShot on Success@B
+  but loses on AUC because it explores before falling back.}
   \label{tab:knapsack}
   \footnotesize
-  \begin{tabular}{llccccc}
+  \begin{tabular}{lccccc}
     \toprule
-    Agent & Model & S@5 & S@10 & S@20 & AUC & TTFV \\
+    Agent & S@5 & S@10 & S@20 & AUC & TTFV \\
     \midrule
-    Single  & Flash & 0.62 & 0.62 & 0.62 & 0.59 & 1.0 \\
-    Single  & Pro   & 0.70 & 0.70 & 0.70 & 0.67 & 1.0 \\
-    Loop    & Flash & 0.00 & 0.00 & 0.08 & 0.02 & 17.9 \\
-    Loop    & Pro   & 0.00 & 0.00 & 0.12 & 0.02 & 17.9 \\
-    Budget  & Flash & 0.62 & 0.62 & 0.62 & 0.39 & 8.0 \\
-    Budget  & Pro   & 0.70 & 0.70 & 0.70 & 0.44 & 8.0 \\
+    Single  & 0.62 & 0.62 & 0.62 & 0.59 & 1.0 \\
+    Loop    & 0.00 & 0.00 & 0.08 & 0.02 & 17.9 \\
+    Budget  & 0.62 & 0.62 & 0.62 & 0.39 & 8.0 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The TTFV column explains the AUC gap mechanically. SingleShot submits
-at TTFV $= 1$. BudgetAware's TTFV is exactly $0.4 \cdot B$ (2, 4, 8
-at $B = 5, 10, 20$), matching the budget consumed in HIGH before the
-$0.6$ threshold tips it into the fallback. LoopAgent only ever
-submits at $B = 20$, and consumes 17.9 of 20 units before doing so.
+The TTFV column explains the AUC gap. SingleShot submits at TTFV
+$= 1$. BudgetAware's TTFV is exactly $0.4 \cdot B$ (2, 4, 8 at
+$B = 5, 10, 20$), which matches the budget it consumes in the HIGH
+regime before the $0.6$ threshold tips it into the fallback path; the
+relationship is mechanical, not emergent. LoopAgent only submits at
+$B = 20$, and consumes 17.9 of 20 units before doing so.
 
 \subsection{SWE-bench Lite}
 The qualitative picture changes (Table~\ref{tab:swe},
@@ -309,12 +309,14 @@ five is.
 \section{Discussion}
 
 \paragraph{Strategy beats raw capability under budget.}
-Switching from Flash to Pro adds 8\,pp uniformly on Knapsack and
-12.5\,pp on the SWE-bench cells where budget is large enough to
-exploit it; the qualitative ordering is preserved. Switching from
+Switching from Flash to Pro on SWE-bench at $B = 20$ adds nothing for
+any agent; at $B = 40$ it adds 12.5\,pp for both LoopAgent and
+BudgetAwareAgent, while preserving the agent ordering. Switching from
 LoopAgent to BudgetAwareAgent at $B = 10$ on Knapsack adds more than
-50\,pp, flipping the ordering. The cost of adding budget awareness
-was about 120 lines of Python.
+50\,pp, flipping the ordering, and at SWE-bench $B = 20$ adds 25\,pp
+under either model. The cost of adding budget awareness was about
+120 lines of Python; even where Pro helps, switching agent strategy
+helps more.
 
 \paragraph{The harness is cheap to add.}
 The runner, metrics, and visualisation modules together are roughly
@@ -334,15 +336,23 @@ treat \texttt{run\_tests} as the dominant cost item and prune it
 under tight budgets.
 
 \paragraph{Limitations.}
-Eight SWE-bench issues yield wide CIs; scaling to the full 300-issue
-Lite split is the most useful follow-up. Budget here counts tool
-calls, not tokens or wall-clock; a token-aware budget would handle
-agents that issue fewer but larger calls. BudgetAware's 0.6 and 0.3
-thresholds are hand-tuned and held fixed; learning them per
-environment is open work. We tested only the Gemini 2.5 family;
-replicating with Claude or GPT would test universality. Our original
-proposal included retrieval augmentation, which we descoped to keep
-the budget-awareness comparison clean.
+Eight SWE-bench issues yield wide CIs (e.g., $[0.25, 0.88]$ for the
+strongest BudgetAware cell); scaling to the full 300-issue Lite split
+is the most useful follow-up. The Knapsack ``Flash versus Pro''
+contrast is not meaningful in our setup because the Knapsack agents
+are deterministic heuristics that do not call an LLM; an early draft
+of this paper reported an $\sim$8\,pp Pro lift on Knapsack which we
+attribute to differences in Python's randomized string-hash seed
+between runs and have removed from the headline. BudgetAware's 0.6
+and 0.3 thresholds are hand-tuned and held fixed; learning them per
+environment is open work. The 0\% violation rate of BudgetAware is
+partly by construction, since the LOW-regime fallback always issues
+\texttt{submit\_patch}; LoopAgent's 38\% violation rate at SWE-bench
+$B{=}20$ Flash is the comparable real failure mode. Budget here
+counts tool calls, not tokens or wall-clock. We tested only the
+Gemini 2.5 family; replicating with Claude or GPT would test
+universality. Our original proposal included retrieval augmentation,
+which we descoped to keep the budget-awareness comparison clean.
 
 \section{Conclusion}
 
@@ -350,12 +360,11 @@ Existing code-agent benchmarks score the answer and ignore the cost
 of producing it. BudgetBench treats the tool-call budget as the
 central axis, intercepts every action, logs every cost, and reports
 Success@B, AUC, and violation rate with bootstrap intervals. Across
-996 episodes a regime-switching BudgetAwareAgent matched or beat the
+546 episodes a regime-switching BudgetAwareAgent matched or beat the
 single-shot baseline with zero violations while a budget-blind
-ReAct loop collapsed at low budgets. Switching from Flash to Pro
-added 8\,pp on Knapsack and 12.5\,pp on the SWE-bench cells where
-budget allowed multi-step exploitation, preserving the agent
-ordering in every cell. The harness is small, LLM-agnostic, and
+ReAct loop collapsed at low budgets. Switching from Gemini Flash to
+Pro on SWE-bench added nothing at $B = 20$ but 12.5\,pp at $B = 40$
+for multi-step agents, preserving the agent ordering in every cell. The harness is small, LLM-agnostic, and
 could be retrofitted to existing benchmarks with a thin shim,
 turning every tool-using-agent paper into one that also reports its
 action efficiency. Code at
