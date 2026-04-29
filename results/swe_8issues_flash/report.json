@@ -1,0 +1,86 @@
+{
+  "SingleShot": {
+    "20": {
+      "n_episodes": 8,
+      "success_at_b_max": 0.0,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.0,
+      "success_ci_95_lo": 0.0,
+      "success_ci_95_hi": 0.0,
+      "n_ok_solved": 0,
+      "n_invalid_format": 0,
+      "n_test_fail": 8,
+      "n_budget_exceeded": 0
+    },
+    "40": {
+      "n_episodes": 8,
+      "success_at_b_max": 0.0,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.0,
+      "success_ci_95_lo": 0.0,
+      "success_ci_95_hi": 0.0,
+      "n_ok_solved": 0,
+      "n_invalid_format": 0,
+      "n_test_fail": 8,
+      "n_budget_exceeded": 0
+    }
+  },
+  "LoopAgent": {
+    "20": {
+      "n_episodes": 8,
+      "success_at_b_max": 0.375,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.0906,
+      "success_ci_95_lo": 0.125,
+      "success_ci_95_hi": 0.75,
+      "n_ok_solved": 3,
+      "n_invalid_format": 0,
+      "n_test_fail": 2,
+      "n_budget_exceeded": 3
+    },
+    "40": {
+      "n_episodes": 8,
+      "success_at_b_max": 0.375,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.1641,
+      "success_ci_95_lo": 0.125,
+      "success_ci_95_hi": 0.75,
+      "n_ok_solved": 3,
+      "n_invalid_format": 0,
+      "n_test_fail": 4,
+      "n_budget_exceeded": 1
+    }
+  },
+  "BudgetAware": {
+    "20": {
+      "n_episodes": 8,
+      "success_at_b_max": 0.625,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.3219,
+      "success_ci_95_lo": 0.25,
+      "success_ci_95_hi": 0.875,
+      "n_ok_solved": 5,
+      "n_invalid_format": 0,
+      "n_test_fail": 3,
+      "n_budget_exceeded": 0
+    },
+    "40": {
+      "n_episodes": 8,
+      "success_at_b_max": 0.375,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.1734,
+      "success_ci_95_lo": 0.0,
+      "success_ci_95_hi": 0.75,
+      "n_ok_solved": 3,
+      "n_invalid_format": 0,
+      "n_test_fail": 5,
+      "n_budget_exceeded": 0
+    }
+  }
+}

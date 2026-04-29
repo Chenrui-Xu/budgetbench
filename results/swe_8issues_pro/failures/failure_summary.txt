@@ -1,0 +1,17 @@
+BudgetBench — Failure-Mode Summary
+========================================
+
+BudgetAware  (n=16)
+  OK_SOLVED     :    9  (56.2%)
+  Top failure modes:
+    TEST_FAIL             7  (43.8%)
+
+LoopAgent  (n=16)
+  OK_SOLVED     :    7  (43.8%)
+  Top failure modes:
+    TEST_FAIL             9  (56.2%)
+
+SingleShot  (n=16)
+  OK_SOLVED     :    0  (0.0%)
+  Top failure modes:
+    TEST_FAIL            16  (100.0%)

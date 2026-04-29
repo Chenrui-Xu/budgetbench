@@ -1,0 +1,7 @@
+agent,budget,flash_success,pro_success,delta
+SingleShot,20,0.0,0.0,0.0
+SingleShot,40,0.0,0.0,0.0
+LoopAgent,20,0.375,0.375,0.0
+LoopAgent,40,0.375,0.5,0.125
+BudgetAware,20,0.625,0.625,0.0
+BudgetAware,40,0.375,0.5,0.125

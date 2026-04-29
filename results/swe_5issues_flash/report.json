@@ -1,0 +1,125 @@
+{
+  "SingleShot": {
+    "10": {
+      "n_episodes": 5,
+      "success_at_b_max": 0.0,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.0,
+      "success_ci_95_lo": 0.0,
+      "success_ci_95_hi": 0.0,
+      "n_ok_solved": 0,
+      "n_invalid_format": 0,
+      "n_test_fail": 5,
+      "n_budget_exceeded": 0
+    },
+    "20": {
+      "n_episodes": 5,
+      "success_at_b_max": 0.0,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.0,
+      "success_ci_95_lo": 0.0,
+      "success_ci_95_hi": 0.0,
+      "n_ok_solved": 0,
+      "n_invalid_format": 0,
+      "n_test_fail": 5,
+      "n_budget_exceeded": 0
+    },
+    "30": {
+      "n_episodes": 5,
+      "success_at_b_max": 0.0,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.0,
+      "success_ci_95_lo": 0.0,
+      "success_ci_95_hi": 0.0,
+      "n_ok_solved": 0,
+      "n_invalid_format": 0,
+      "n_test_fail": 5,
+      "n_budget_exceeded": 0
+    }
+  },
+  "LoopAgent": {
+    "10": {
+      "n_episodes": 5,
+      "success_at_b_max": 0.0,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.0,
+      "success_ci_95_lo": 0.0,
+      "success_ci_95_hi": 0.0,
+      "n_ok_solved": 0,
+      "n_invalid_format": 0,
+      "n_test_fail": 1,
+      "n_budget_exceeded": 4
+    },
+    "20": {
+      "n_episodes": 5,
+      "success_at_b_max": 0.2,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.065,
+      "success_ci_95_lo": 0.0,
+      "success_ci_95_hi": 0.6,
+      "n_ok_solved": 1,
+      "n_invalid_format": 0,
+      "n_test_fail": 2,
+      "n_budget_exceeded": 2
+    },
+    "30": {
+      "n_episodes": 5,
+      "success_at_b_max": 0.4,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.2,
+      "success_ci_95_lo": 0.0,
+      "success_ci_95_hi": 0.8,
+      "n_ok_solved": 2,
+      "n_invalid_format": 0,
+      "n_test_fail": 3,
+      "n_budget_exceeded": 0
+    }
+  },
+  "BudgetAware": {
+    "10": {
+      "n_episodes": 5,
+      "success_at_b_max": 0.2,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.11,
+      "success_ci_95_lo": 0.0,
+      "success_ci_95_hi": 0.6,
+      "n_ok_solved": 1,
+      "n_invalid_format": 0,
+      "n_test_fail": 4,
+      "n_budget_exceeded": 0
+    },
+    "20": {
+      "n_episodes": 5,
+      "success_at_b_max": 0.0,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.0,
+      "success_ci_95_lo": 0.0,
+      "success_ci_95_hi": 0.0,
+      "n_ok_solved": 0,
+      "n_invalid_format": 0,
+      "n_test_fail": 5,
+      "n_budget_exceeded": 0
+    },
+    "30": {
+      "n_episodes": 5,
+      "success_at_b_max": 0.2,
+      "invalid_at_b_max": 0.0,
+      "violation_rate": 0.0,
+      "auc_success_vs_budget": 0.1167,
+      "success_ci_95_lo": 0.0,
+      "success_ci_95_hi": 0.6,
+      "n_ok_solved": 1,
+      "n_invalid_format": 0,
+      "n_test_fail": 4,
+      "n_budget_exceeded": 0
+    }
+  }
+}

@@ -11,3 +11,33 @@ htmlcov/
 *.log
 results/*.json
 results/*.csv
+
+# macOS
+.DS_Store
+
+# Experiment runtime junk
+logs/
+budgetbench-env.budgetbench_*.json
+
+# LaTeX build artifacts
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.toc
+paper/*.bbl
+paper/*.blg
+paper/*.synctex.gz
+paper/*.fdb_latexmk
+paper/*.fls
+paper/figures/*.aux
+paper/figures/*.log
+slides/*.aux
+slides/*.log
+slides/*.nav
+slides/*.snm
+slides/*.toc
+slides/*.out
+
+# Slides build / package artifacts
+slides/node_modules/
+slides/budgetbench_slides.zip

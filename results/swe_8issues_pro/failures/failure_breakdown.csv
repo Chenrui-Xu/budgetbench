@@ -1,0 +1,7 @@
+agent,budget_total,n_episodes,n_ok_solved,pct_ok_solved,n_invalid_format,pct_invalid_format,n_patch_apply_fail,pct_patch_apply_fail,n_test_fail,pct_test_fail,n_budget_exceeded,pct_budget_exceeded
+BudgetAware,20,8,5,62.5,0,0.0,0,0.0,3,37.5,0,0.0
+BudgetAware,40,8,4,50.0,0,0.0,0,0.0,4,50.0,0,0.0
+LoopAgent,20,8,3,37.5,0,0.0,0,0.0,5,62.5,0,0.0
+LoopAgent,40,8,4,50.0,0,0.0,0,0.0,4,50.0,0,0.0
+SingleShot,20,8,0,0.0,0,0.0,0,0.0,8,100.0,0,0.0
+SingleShot,40,8,0,0.0,0,0.0,0,0.0,8,100.0,0,0.0
