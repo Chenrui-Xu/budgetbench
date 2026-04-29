@@ -97,7 +97,7 @@ larger gains than upgrading the LLM backbone.
 
 \section{Methods}
 
-\subsection{Framework.}
+\subsection{Framework}
 BudgetBench is built around four abstractions. An \emph{Agent}
 exposes \texttt{act(obs, budget\_remaining, history)} and returns a
 tool call. An \emph{Environment} accepts the call, returns an
@@ -127,7 +127,7 @@ unit. \texttt{run\_tests} costs three, since real test suites take
 seconds to minutes. \texttt{submit\_patch} costs zero, because once
 the agent submits, further work is wasted.
 
-\subsection{Metrics.}
+\subsection{Metrics}
 For $N$ episodes with statuses $s_i$ and budget usage $b_i$,
 \begin{align*}
 \text{Success@B} &= \tfrac{1}{N}\sum \mathbb{1}[s_i=\text{OK\_SOLVED} \land b_i\le B] \\
@@ -140,7 +140,7 @@ TTFV, the mean budget consumed before the agent's first valid
 \texttt{submit\_patch}. AUC is our primary ranking metric: it rewards
 agents that succeed across the budget range, not only at $B_\text{max}$.
 
-\subsection{Environments.}
+\subsection{Environments}
 \textbf{Knapsack.} Each episode generates ten items with weights and
 values uniform in $[1,20]$ given a fixed seed; the agent selects a
 subset fitting capacity 50 with maximum value. A
@@ -157,7 +157,7 @@ first attempt the official harness, and fall through to a manual
 re-apply when the harness reports a recoverable error. We use eight
 default-ordering Lite issues (four astropy, four django).
 
-\subsection{Agents.}
+\subsection{Agents}
 \textbf{SingleShotAgent} issues exactly one LLM call: read issue,
 emit unified diff, submit. Its budget consumption is independent of
 the ceiling, isolating raw model capability.
@@ -188,7 +188,7 @@ across our experiments.
   \label{fig:regimes}
 \end{figure}
 
-\subsection{Experiment design.}
+\subsection{Experiment design}
 We launch experiments through a single
 \texttt{batch\_experiment.py} entry point that fixes seeds per
 (environment, issue). Cells: Knapsack with Flash and Pro at
@@ -198,7 +198,7 @@ SWE-bench Lite with Flash and Pro at $B \in \{20, 40\}$ over 8 issues
 
 \section{Results}
 
-\subsection{Knapsack.}
+\subsection{Knapsack}
 SingleShot and BudgetAware reach the same Success@B at every budget
 (0.62 Flash, 0.70 Pro, Table~\ref{tab:knapsack}). LoopAgent collapses
 at low budgets: zero at $B \in \{5,10\}$ and barely above chance at
@@ -213,7 +213,8 @@ Knapsack episodes per model; LoopAgent's is 100\% at $B \le 10$.
   \centering
   \caption{Knapsack: Success@B with 95\% bootstrap CIs (n=50 seeds),
   AUC at $B_\text{max}=20$, and TTFV (mean budget before first valid
-  submit; ``--'' = never submitted). BudgetAware ties SingleShot on
+  submit). Agent abbreviations: Single = SingleShotAgent, Loop =
+  LoopAgent, Budget = BudgetAwareAgent. BudgetAware ties SingleShot on
   Success@B but loses on AUC because it explores before falling back.}
   \label{tab:knapsack}
   \footnotesize
@@ -237,7 +238,7 @@ at $B = 5, 10, 20$), matching the budget consumed in HIGH before the
 $0.6$ threshold tips it into the fallback. LoopAgent only ever
 submits at $B = 20$, and consumes 17.9 of 20 units before doing so.
 
-\subsection{SWE-bench Lite.}
+\subsection{SWE-bench Lite}
 The qualitative picture changes (Table~\ref{tab:swe},
 Figure~\ref{fig:swe}). SingleShot solves none of the 16 SWE-bench
 episodes per model: without exploration, the LLM cannot guess a
@@ -250,9 +251,10 @@ rate is 38\%.
 
 \begin{table}
   \centering
-  \caption{SWE-bench Lite (eight issues per cell). The strongest cell
-  is BudgetAware Pro at $B{=}20$ (5/8 solved, 0\% violation). Pro
-  eliminates LoopAgent's Flash budget violations entirely.}
+  \caption{SWE-bench Lite (eight issues per cell; agent abbreviations
+  as in Table~\ref{tab:knapsack}). The strongest cell is Budget at Pro
+  $B{=}20$ (5/8 solved, 0\% violation). Pro eliminates Loop's Flash
+  budget violations entirely.}
   \label{tab:swe}
   \footnotesize
   \begin{tabular}{lllccc}
@@ -292,7 +294,7 @@ success, zero violations, the best Success@B in the entire matrix.
   \label{fig:swe}
 \end{figure}
 
-\subsection{Failure modes.}
+\subsection{Failure modes}
 Aggregating Flash episodes across both budgets, SingleShot fails
 uniformly (16/16 \texttt{TEST\_FAIL}). LoopAgent splits between
 \texttt{TEST\_FAIL} (37.5\%) and \texttt{BUDGET\_EXCEEDED} (25\%).
