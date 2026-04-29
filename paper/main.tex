@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% BudgetBench — CMU 24-880 Final Project Report
+%% BudgetBench - CMU 24-880 Final Project Report
 %% Based on the achemso course template (project_report.tex).
 %% Body kept under the 2500-word limit. The full-length report with
 %% extended Related Work, full Limitations section, and additional
@@ -73,16 +73,15 @@ leaderboards. The benchmark cannot see the difference; the engineering
 team cannot ignore it.
 
 The gap distorts agent design. ReAct-style loops~\cite{yao2023react}
-are encouraged to over-explore because each additional search,
-inspect, or test call costs them nothing in the metric, and downstream
-systems such as SWE-Agent~\cite{yang2024sweagent} inherit the same
-incentive. Pass@k~\cite{chen2021codex} measures sample efficiency
+over-explore because each additional search, inspect, or test call
+costs them nothing in the metric. Downstream systems such as
+SWE-Agent~\cite{yang2024sweagent} inherit the same incentive. Pass@k~\cite{chen2021codex} measures sample efficiency
 across attempts but not action efficiency \emph{within} an attempt.
 HELM~\cite{liang2023helm} reports per-query token cost as a post-hoc
 audit rather than a per-episode constraint. The classical anytime
 literature~\cite{zilberstein1996anytime} studied
 quality-versus-deliberation trade-offs decades ago, but modern LLM
-benchmarks have not adopted them.
+benchmarks have not adopted these ideas.
 
 This paper contributes (1) BudgetBench, a small harness that exposes a
 per-episode tool-call budget as a first-class axis; (2) two reference
@@ -90,7 +89,7 @@ environments at very different scales (a deterministic 0/1-Knapsack
 toy and SWE-bench Lite); (3) three reference agents including a
 regime-switching BudgetAwareAgent that adapts to remaining budget;
 and (4) an empirical study spanning 996 episodes with a Gemini 2.5
-Flash-versus-Pro comparison. Our headline finding is that, in the
+Flash-versus-Pro comparison. Our main finding is that, in the
 budget-constrained regime, a small amount of strategy beats a large
 amount of model: BudgetAware adds about 120 lines of code but produces
 larger gains than upgrading the LLM backbone.
@@ -154,7 +153,9 @@ Docker container from the official evaluation image at the issue's
 base commit, exposing six tools (search, inspect, hierarchy, edit,
 run\_tests, submit\_patch). Scoring follows a two-tier strategy: we
 first attempt the official harness, and fall through to a manual
-re-apply when the harness reports a recoverable error. We use eight
+fallback (re-applying the patch in a fresh sandbox and running the
+issue's test sets directly) when the harness reports a recoverable
+error. We use eight
 default-ordering Lite issues (four astropy, four django).
 
 \subsection{Agents}
@@ -175,7 +176,7 @@ behaves like LoopAgent. \emph{MEDIUM} ($0.3<f\le 0.6$): prunes
 \texttt{run\_tests} from the action set, roughly tripling remaining
 exploratory moves. \emph{LOW} ($f\le 0.3$): skips the LLM call,
 extracts the most recent valid diff from history, and submits.
-Implementation reuses LoopAgent via three hook overrides; the new
+We reuse LoopAgent through three hook overrides; the new
 code is roughly 120 lines. Thresholds are hand-tuned and identical
 across our experiments.
 
@@ -201,8 +202,8 @@ SWE-bench Lite with Flash and Pro at $B \in \{20, 40\}$ over 8 issues
 \subsection{Knapsack}
 SingleShot and BudgetAware reach the same Success@B at every budget
 (0.62 Flash, 0.70 Pro, Table~\ref{tab:knapsack}). LoopAgent collapses
-at low budgets: zero at $B \in \{5,10\}$ and barely above chance at
-$B = 20$, with all low-budget failures being
+at low budgets: it scores zero at $B \in \{5,10\}$ and barely above
+chance at $B = 20$, and all low-budget failures are
 \texttt{BUDGET\_EXCEEDED}. The Flash-to-Pro lift is a uniform
 8\,pp across all agents and budgets, consistent with Pro being a
 strictly stronger backbone that contributes nothing to budget
@@ -282,7 +283,7 @@ Pro is no better than Flash for any agent; at $B = 40$ both LoopAgent
 and BudgetAware gain 12.5\,pp. Pro's stronger reasoning needs more
 steps to materialise. Pro also slashes LoopAgent's violation rate to
 zero, which makes Pro both more accurate per call and more efficient
-per step. The headline cell is BudgetAware Pro at $B = 20$: 62.5\%
+per step. The best cell is BudgetAware Pro at $B = 20$: 62.5\%
 success, zero violations, the best Success@B in the entire matrix.
 
 \begin{figure}
