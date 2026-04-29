@@ -77,9 +77,11 @@ budget-aware agent matches the
 single-shot agent's terminal success while keeping the budget violation
 rate at zero, whereas the unmodified loop agent collapses at low budgets
 regardless of which Gemini model backs it. Upgrading from Gemini 2.5
-Flash to Pro adds a uniform 8 percentage points across all agents but does
-not change the qualitative ordering, suggesting that under tight budgets
-agent design dominates model capability.
+Flash to Pro adds a uniform 8 percentage points on Knapsack and helps
+the multi-step agents at higher SWE-bench budgets only ($+$12.5\,pp at
+$B = 40$, $0$ at $B = 20$); the qualitative ordering of agents is
+preserved in every cell, suggesting that under tight budgets agent
+design dominates model capability.
 \end{abstract}
 
 % -----------------------------------------------------------------------------
@@ -109,7 +111,7 @@ This paper contributes (1) \textbf{BudgetBench}, a small harness that
 exposes a per-episode tool-call budget as a first-class axis and emits
 the metrics needed to study how agents behave as the budget tightens;
 (2) two reference environments at very different scales, namely a
-deterministic 0/1-knapsack environment for harness validation and
+deterministic 0/1-Knapsack environment for harness validation and
 SWE-bench Lite for realistic patching; (3) three reference agents
 including a regime-switching \textbf{BudgetAwareAgent} that adapts its
 strategy as remaining budget shrinks; and (4) an empirical study
@@ -213,8 +215,8 @@ should reflect this. By default each lightweight call (\texttt{search},
 manipulation tools) debits one unit of budget. Running the issue's test
 suite costs three, reflecting that real-world test runs can take seconds
 or minutes and dominate the wall-clock and dollar cost of a full episode
-when invoked repeatedly. Submitting the final patch costs zero, since by
-the time \texttt{submit\_patch} is called the agent has committed to its
+when invoked repeatedly. Submitting the final patch costs zero because once
+\texttt{submit\_patch} is called the agent has committed to its
 answer and any further work is wasted. Table~\ref{tab:cost} lists the
 defaults; cost weights are configurable per experiment.
 
@@ -283,9 +285,9 @@ match.
 
 We use Knapsack purely as a harness shakedown. It is fully deterministic
 given a seed, requires no API key, runs in milliseconds, and isolates
-agent strategy from LLM stochasticity. The fifty seeds we use are reused
-identically across every (agent, budget, model) cell, so any difference
-in outcomes is attributable to those three axes alone. The Knapsack
+agent strategy from LLM stochasticity. We share the same fifty seeds
+across every (agent, budget, model) cell, so any difference in outcomes
+is attributable to those three axes alone. The Knapsack
 agents in our reported experiments are heuristic, not LLM-backed; this
 choice keeps the comparison cheap to reproduce and removes the
 confounder of prompting differences.
@@ -383,8 +385,8 @@ injects a short instruction block into the system prompt describing
 the current regime, \texttt{\_pre\_act()} short-circuits the LLM call
 in the LOW regime, and \texttt{\_allow\_run\_tests()} returns
 \texttt{False} in MEDIUM. The new code is roughly 120 lines. Regime
-thresholds (0.6 and 0.3) are hand-tuned and identical across all of
-our experiments; learning them per environment is left for future
+thresholds (0.6 and 0.3) are hand-tuned and identical across our
+experiments; learning them per environment is left for future
 work.
 
 \begin{figure}[t]
@@ -536,10 +538,10 @@ Success@B for the eight-issue Flash run.
 Three observations stand out. First, SingleShot solves none of the 16
 SWE-bench episodes. Without exploration, the model cannot guess a
 patch that resolves any of the eight selected astropy and django
-issues; every submission lands in \texttt{TEST\_FAIL}. This is the
-expected outcome on a benchmark where issues require multi-file
-reasoning and a strict test suite, and confirms that Knapsack-style
-single-shot dominance does not transfer to real code repair.
+issues; every submission lands in \texttt{TEST\_FAIL}. This confirms
+that Knapsack-style single-shot dominance does not transfer to real
+code repair: SWE-bench issues demand multi-file reasoning and pass a
+strict hidden test suite.
 
 Second, BudgetAware reaches the highest Success@B ($0.625$ at $B = 20$),
 a 25 percentage-point lead over LoopAgent at the same budget. More
@@ -615,8 +617,8 @@ respects budget gets even better with a stronger backbone.
 \subsection{Failure-Mode Analysis}
 \label{sec:exp:failures}
 
-Aggregating across both budgets, the failure-mode distribution
-(Figure~\ref{fig:failures}) tells a clean story per agent. SingleShot
+Aggregating Flash episodes across both budgets, the failure-mode
+distribution (Figure~\ref{fig:failures}) tells a clean story per agent. SingleShot
 fails uniformly: 16 of 16 episodes terminate in \texttt{TEST\_FAIL},
 i.e. the patch was syntactically valid but did not resolve the issue.
 LoopAgent splits its failures roughly evenly between
@@ -764,8 +766,10 @@ Across 900 Knapsack episodes and 96 SWE-bench Lite episodes, a
 regime-switching BudgetAwareAgent matched or beat a single-shot
 baseline's terminal accuracy with a zero violation rate while a
 budget-blind ReAct loop collapsed at low budgets. Switching
-the LLM backbone from Gemini Flash to Pro added a uniform 8 percentage
-points but did not change the ordering. The harness is small,
+the LLM backbone from Gemini Flash to Pro added 8 percentage points
+on Knapsack and 12.5 percentage points on the SWE-bench cells where
+budget allowed multi-step exploitation, while preserving the
+qualitative ordering of agents in every cell. The harness is small,
 LLM-agnostic, and could be retrofitted to existing benchmarks with a
 thin shim, turning every tool-using-agent paper into one that also
 reports its action efficiency.
