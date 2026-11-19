@@ -1,0 +1,4 @@
+biopython
+google-genai
+matplotlib
+numpy

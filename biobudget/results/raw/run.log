@@ -1,0 +1,255 @@
+16:29:25 [auth] Gemini API key (GEMINI_API_KEY)
+16:29:25 [plan] 3 questions, budgets [6], model gemini-2.5-flash, thinking_budget 1024, cost cap $20.00
+16:29:25 [resume] 0 episodes already done, 9 to run, $0.00 spent so far
+16:29:25 [estimate] 9 episodes; rough cost a few cents, hard cap $20.00
+16:29:25 >>> This will call gemini-2.5-flash and bill: Gemini API key (GEMINI_API_KEY)
+16:29:25 >>> Press Enter to start, or Ctrl+C to cancel.
+16:31:35 [progress] 1/9  cost $0.00  last: SingleShot B=0 API_ERROR
+16:31:35 [summary] {'SingleShot:API_ERROR': 1}
+16:31:35 [cost] estimated total $0.00 (list price, Gemini 2.5 Flash)
+16:31:35 [stopped early] API error on first calls: ClientError: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Thinking is not enabled for api version v1. Use api version v1beta instead.', 'status': 'INVALID_ARGUMENT'}}
+16:31:35 [exit] all workers finished; the process will now exit.
+16:33:33 [auth] Gemini API key (GEMINI_API_KEY)
+16:33:33 [plan] 3 questions, budgets [6], model gemini-2.5-flash, thinking_budget 1024, cost cap $20.00
+16:33:33 [resume] 0 episodes already done, 9 to run, $0.00 spent so far
+16:33:33 [estimate] 9 episodes; rough cost a few cents, hard cap $20.00
+16:33:33 >>> This will call gemini-2.5-flash and bill: Gemini API key (GEMINI_API_KEY)
+16:33:33 >>> Press Enter to start, or Ctrl+C to cancel.
+16:35:43 [progress] 1/9  cost $0.07  last: SingleShot B=0 INVALID_FORMAT
+16:35:49 [progress] 2/9  cost $0.07  last: Loop B=6 ABSTAINED
+16:35:54 [progress] 3/9  cost $0.07  last: BudgetAware B=6 OK_SOLVED
+16:36:06 [progress] 4/9  cost $0.08  last: SingleShot B=0 INVALID_FORMAT
+16:36:08 [progress] 5/9  cost $0.08  last: Loop B=6 OK_SOLVED
+16:36:10 [progress] 6/9  cost $0.08  last: BudgetAware B=6 OK_SOLVED
+16:36:10 [progress] 7/9  cost $0.08  last: SingleShot B=0 API_ERROR
+16:36:11 [progress] 8/9  cost $0.08  last: Loop B=6 API_ERROR
+16:36:11 [progress] 9/9  cost $0.08  last: BudgetAware B=6 API_ERROR
+16:36:11 [summary] {'BudgetAware:API_ERROR': 1, 'BudgetAware:OK_SOLVED': 2, 'Loop:ABSTAINED': 1, 'Loop:API_ERROR': 1, 'Loop:OK_SOLVED': 1, 'SingleShot:API_ERROR': 1, 'SingleShot:INVALID_FORMAT': 2}
+16:36:11 [cost] estimated total $0.08 (list price, Gemini 2.5 Flash)
+16:36:11 [exit] all workers finished; the process will now exit.
+16:36:12 [auth] Gemini API key (GEMINI_API_KEY)
+16:36:12 [plan] 180 questions, budgets [3, 6, 12], model gemini-2.5-flash, thinking_budget 1024, cost cap $20.00
+16:36:12 [resume] 0 episodes already done, 1260 to run, $0.00 spent so far
+16:36:12 [estimate] projected cost for 1260 episodes: about $9.40 (from the smoke test; real runs vary), hard cap $20.00
+16:36:12 >>> This will call gemini-2.5-flash and bill: Gemini API key (GEMINI_API_KEY)
+16:36:12 >>> Press Enter to start, or Ctrl+C to cancel.
+19:58:49 [auth] Gemini API key (GEMINI_API_KEY)
+19:58:49 [plan] 3 questions, budgets [6], model gemini-2.5-flash, thinking_budget 1024, cost cap $20.00
+19:58:49 [resume] 0 episodes already done, 9 to run, $0.00 spent so far
+19:58:49 [estimate] 9 episodes; rough cost a few cents, hard cap $20.00
+19:59:54 [progress] 1/9  cost $0.01  last: SingleShot B=0 INVALID_FORMAT
+20:00:50 [progress] 2/9  cost $0.01  last: Loop B=6 OK_SOLVED
+20:07:28 [progress] 3/9  cost $0.02  last: BudgetAware B=6 OK_SOLVED
+20:07:41 [progress] 4/9  cost $0.03  last: SingleShot B=0 INVALID_FORMAT
+20:14:16 [progress] 5/9  cost $0.03  last: Loop B=6 OK_SOLVED
+20:20:52 [progress] 6/9  cost $0.03  last: BudgetAware B=6 OK_SOLVED
+20:21:09 [progress] 7/9  cost $0.04  last: SingleShot B=0 INVALID_FORMAT
+20:21:11 [progress] 8/9  cost $0.04  last: Loop B=6 OK_SOLVED
+20:21:13 [progress] 9/9  cost $0.04  last: BudgetAware B=6 OK_SOLVED
+20:21:13 [summary] {'BudgetAware:OK_SOLVED': 3, 'Loop:OK_SOLVED': 3, 'SingleShot:INVALID_FORMAT': 3}
+20:21:13 [cost] estimated total $0.04 (list price, Gemini 2.5 Flash)
+20:21:13 [exit] all workers finished; the process will now exit.
+20:21:13 [auth] Gemini API key (GEMINI_API_KEY)
+20:21:13 [plan] 180 questions, budgets [3, 6, 12], model gemini-2.5-flash, thinking_budget 1024, cost cap $20.00
+20:21:13 [resume] 0 episodes already done, 1260 to run, $0.00 spent so far
+20:21:13 [estimate] projected cost for 1260 episodes: about $3.79 (from the smoke test; real runs vary), hard cap $20.00
+20:21:34 [progress] 25/1260  cost $0.08  last: BudgetAware B=3 ABSTAINED
+20:21:52 [progress] 50/1260  cost $0.18  last: Loop B=6 OK_SOLVED
+20:22:09 [progress] 75/1260  cost $0.26  last: SingleShot B=0 INVALID_FORMAT
+20:22:29 [progress] 100/1260  cost $0.36  last: Loop B=12 WRONG_ANSWER
+20:22:46 [progress] 125/1260  cost $0.46  last: Loop B=12 OK_SOLVED
+20:23:07 [progress] 150/1260  cost $0.57  last: BudgetAware B=12 OK_SOLVED
+20:23:26 [progress] 175/1260  cost $0.68  last: BudgetAware B=12 WRONG_ANSWER
+20:23:44 [progress] 200/1260  cost $0.78  last: SingleShot B=0 INVALID_FORMAT
+20:24:01 [progress] 225/1260  cost $0.88  last: Loop B=6 OK_SOLVED
+20:24:20 [progress] 250/1260  cost $0.99  last: BudgetAware B=6 OK_SOLVED
+20:24:38 [progress] 275/1260  cost $1.09  last: BudgetAware B=12 OK_SOLVED
+20:24:57 [progress] 300/1260  cost $1.17  last: SingleShot B=0 INVALID_FORMAT
+20:25:17 [progress] 325/1260  cost $1.28  last: BudgetAware B=6 ABSTAINED
+20:25:35 [progress] 350/1260  cost $1.37  last: Loop B=3 OK_SOLVED
+20:25:52 [progress] 375/1260  cost $1.47  last: Loop B=12 ABSTAINED
+20:26:13 [progress] 400/1260  cost $1.57  last: Loop B=6 INVALID_FORMAT
+20:26:25 [progress] 425/1260  cost $1.64  last: Loop B=3 OK_SOLVED
+20:26:33 [progress] 450/1260  cost $1.69  last: SingleShot B=0 INVALID_FORMAT
+20:26:41 [progress] 475/1260  cost $1.73  last: BudgetAware B=3 OK_SOLVED
+20:26:48 [progress] 500/1260  cost $1.77  last: Loop B=12 OK_SOLVED
+20:26:57 [progress] 525/1260  cost $1.82  last: SingleShot B=0 INVALID_FORMAT
+20:27:04 [progress] 550/1260  cost $1.86  last: Loop B=12 OK_SOLVED
+20:27:17 [progress] 575/1260  cost $1.91  last: Loop B=3 ABSTAINED
+20:27:31 [progress] 600/1260  cost $1.99  last: BudgetAware B=3 OK_SOLVED
+20:27:45 [progress] 625/1260  cost $2.07  last: BudgetAware B=6 OK_SOLVED
+20:27:57 [progress] 650/1260  cost $2.13  last: BudgetAware B=3 OK_SOLVED
+20:28:10 [progress] 675/1260  cost $2.21  last: BudgetAware B=6 OK_SOLVED
+20:28:24 [progress] 700/1260  cost $2.27  last: Loop B=6 OK_SOLVED
+20:28:34 [progress] 725/1260  cost $2.33  last: BudgetAware B=12 OK_SOLVED
+20:28:45 [progress] 750/1260  cost $2.37  last: Loop B=12 OK_SOLVED
+20:28:57 [progress] 775/1260  cost $2.45  last: SingleShot B=0 INVALID_FORMAT
+20:29:08 [progress] 800/1260  cost $2.51  last: BudgetAware B=3 OK_SOLVED
+20:29:20 [progress] 825/1260  cost $2.55  last: Loop B=6 OK_SOLVED
+20:29:30 [progress] 850/1260  cost $2.62  last: Loop B=12 OK_SOLVED
+20:29:43 [progress] 875/1260  cost $2.67  last: Loop B=6 OK_SOLVED
+20:29:56 [progress] 900/1260  cost $2.74  last: Loop B=3 OK_SOLVED
+20:30:09 [progress] 925/1260  cost $2.80  last: BudgetAware B=6 OK_SOLVED
+20:30:22 [progress] 950/1260  cost $2.87  last: Loop B=3 OK_SOLVED
+20:30:34 [progress] 975/1260  cost $2.93  last: Loop B=12 OK_SOLVED
+20:30:57 [progress] 1000/1260  cost $3.06  last: BudgetAware B=6 ABSTAINED
+20:31:24 [progress] 1025/1260  cost $3.19  last: BudgetAware B=12 OK_SOLVED
+20:31:48 [progress] 1050/1260  cost $3.33  last: SingleShot B=0 INVALID_FORMAT
+20:32:15 [progress] 1075/1260  cost $3.46  last: BudgetAware B=6 WRONG_ANSWER
+20:32:37 [progress] 1100/1260  cost $3.58  last: Loop B=12 OK_SOLVED
+20:33:13 [progress] 1125/1260  cost $3.75  last: SingleShot B=0 INVALID_FORMAT
+20:34:12 [progress] 1150/1260  cost $4.08  last: BudgetAware B=3 OK_SOLVED
+20:35:07 [progress] 1175/1260  cost $4.35  last: BudgetAware B=3 OK_SOLVED
+20:35:53 [progress] 1200/1260  cost $4.63  last: BudgetAware B=12 OK_SOLVED
+20:36:53 [progress] 1225/1260  cost $4.92  last: BudgetAware B=12 OK_SOLVED
+20:37:34 [progress] 1250/1260  cost $5.16  last: Loop B=12 OK_SOLVED
+20:38:06 [summary] {'BudgetAware:ABSTAINED': 121, 'BudgetAware:INVALID_FORMAT': 1, 'BudgetAware:OK_SOLVED': 383, 'BudgetAware:WRONG_ANSWER': 35, 'Loop:ABSTAINED': 78, 'Loop:BUDGET_EXCEEDED': 50, 'Loop:INVALID_FORMAT': 6, 'Loop:OK_SOLVED': 389, 'Loop:WRONG_ANSWER': 17, 'SingleShot:INVALID_FORMAT': 177, 'SingleShot:OK_SOLVED': 2, 'SingleShot:WRONG_ANSWER': 1}
+20:38:06 [cost] estimated total $5.30 (list price, Gemini 2.5 Flash)
+20:38:06 [exit] all workers finished; the process will now exit.
+20:58:44 [auth] Gemini API key (GEMINI_API_KEY)
+20:58:44 [plan] 33 questions, budgets [3, 6, 12], model gemini-2.5-flash, thinking_budget 1024, cost cap $20.00
+20:58:44 [resume] 0 episodes already done, 231 to run, $0.00 spent so far
+20:58:44 [estimate] projected cost for 231 episodes: about $0.97 (from the smoke test; real runs vary), hard cap $20.00
+21:01:29 [progress] 25/231  cost $0.53  last: BudgetAware B=3 ABSTAINED
+21:03:43 [progress] 50/231  cost $1.19  last: BudgetAware B=6 ABSTAINED
+21:04:46 [progress] 75/231  cost $1.67  last: BudgetAware B=3 ABSTAINED
+21:06:50 [progress] 100/231  cost $2.24  last: BudgetAware B=6 ABSTAINED
+21:09:03 [progress] 125/231  cost $3.15  last: Loop B=3 BUDGET_EXCEEDED
+21:10:36 [progress] 150/231  cost $4.11  last: BudgetAware B=12 WRONG_ANSWER
+21:11:46 [progress] 175/231  cost $4.53  last: Loop B=12 OK_SOLVED
+21:13:23 [progress] 200/231  cost $5.08  last: BudgetAware B=3 ABSTAINED
+21:15:04 [progress] 225/231  cost $5.84  last: BudgetAware B=12 ABSTAINED
+21:15:29 [summary] {'BudgetAware:ABSTAINED': 68, 'BudgetAware:INVALID_FORMAT': 1, 'BudgetAware:OK_SOLVED': 14, 'BudgetAware:WRONG_ANSWER': 16, 'Loop:ABSTAINED': 7, 'Loop:BUDGET_EXCEEDED': 75, 'Loop:INVALID_FORMAT': 7, 'Loop:OK_SOLVED': 4, 'Loop:WRONG_ANSWER': 6, 'SingleShot:ABSTAINED': 1, 'SingleShot:INVALID_FORMAT': 31, 'SingleShot:OK_SOLVED': 1}
+21:15:29 [cost] estimated total $6.01 (list price, Gemini 2.5 Flash)
+21:15:29 [exit] all workers finished; the process will now exit.
+22:10:29 [auth] Gemini API key (GEMINI_API_KEY)
+22:10:29 [plan] 360 questions, budgets [3, 6, 12], model gemini-2.5-flash, thinking_budget 1024, cost cap $30.00
+22:10:29 [resume] 1260 episodes already done, 2340 to run, $5.30 spent so far
+22:10:29 [estimate] projected cost for 2340 episodes: about $14.59 (from the smoke test; real runs vary), hard cap $30.00
+22:10:45 [progress] 25/2340  cost $5.37  last: BudgetAwareRead B=3 OK_SOLVED
+22:11:01 [progress] 50/2340  cost $5.46  last: BudgetAwareRead B=12 ABSTAINED
+22:11:18 [progress] 75/2340  cost $5.55  last: SingleShot B=0 INVALID_FORMAT
+22:11:36 [progress] 100/2340  cost $5.65  last: Loop B=3 OK_SOLVED
+22:11:53 [progress] 125/2340  cost $5.74  last: BudgetAwareRead B=6 OK_SOLVED
+22:12:10 [progress] 150/2340  cost $5.84  last: BudgetAwareRead B=12 OK_SOLVED
+22:12:28 [progress] 175/2340  cost $5.93  last: BudgetAware B=6 ABSTAINED
+22:12:46 [progress] 200/2340  cost $6.03  last: BudgetAware B=12 ABSTAINED
+22:13:06 [progress] 225/2340  cost $6.12  last: Loop B=6 ABSTAINED
+22:13:23 [progress] 250/2340  cost $6.21  last: BudgetAwareRead B=12 ABSTAINED
+22:13:42 [progress] 275/2340  cost $6.32  last: BudgetAwareRead B=6 OK_SOLVED
+22:13:58 [progress] 300/2340  cost $6.42  last: BudgetAwareRead B=3 ABSTAINED
+22:14:16 [progress] 325/2340  cost $6.51  last: BudgetAwareRead B=6 ABSTAINED
+22:14:35 [progress] 350/2340  cost $6.61  last: BudgetAwareRead B=12 ABSTAINED
+22:14:54 [progress] 375/2340  cost $6.71  last: BudgetAwareRead B=6 ABSTAINED
+22:15:10 [progress] 400/2340  cost $6.81  last: Loop B=12 OK_SOLVED
+22:15:28 [progress] 425/2340  cost $6.90  last: BudgetAwareRead B=6 OK_SOLVED
+22:15:44 [progress] 450/2340  cost $7.00  last: BudgetAwareRead B=12 WRONG_ANSWER
+22:16:05 [progress] 475/2340  cost $7.11  last: BudgetAware B=6 ABSTAINED
+22:16:26 [progress] 500/2340  cost $7.22  last: Loop B=3 OK_SOLVED
+22:16:42 [progress] 525/2340  cost $7.32  last: BudgetAwareRead B=12 ABSTAINED
+22:16:58 [progress] 550/2340  cost $7.40  last: BudgetAwareRead B=6 OK_SOLVED
+22:17:13 [progress] 575/2340  cost $7.49  last: BudgetAwareRead B=6 WRONG_ANSWER
+22:17:29 [progress] 600/2340  cost $7.57  last: Loop B=3 OK_SOLVED
+22:17:46 [progress] 625/2340  cost $7.65  last: BudgetAwareRead B=12 WRONG_ANSWER
+22:18:00 [progress] 650/2340  cost $7.74  last: SingleShot B=0 INVALID_FORMAT
+22:18:12 [progress] 675/2340  cost $7.79  last: BudgetAware B=12 WRONG_ANSWER
+22:18:29 [progress] 700/2340  cost $7.88  last: Loop B=3 OK_SOLVED
+22:18:48 [progress] 725/2340  cost $7.97  last: SingleShot B=0 INVALID_FORMAT
+22:19:06 [progress] 750/2340  cost $8.06  last: BudgetAwareRead B=3 ABSTAINED
+22:19:20 [progress] 775/2340  cost $8.16  last: BudgetAwareRead B=3 OK_SOLVED
+22:19:27 [progress] 800/2340  cost $8.19  last: BudgetAwareRead B=3 OK_SOLVED
+22:19:34 [progress] 825/2340  cost $8.23  last: BudgetAwareRead B=3 OK_SOLVED
+22:19:40 [progress] 850/2340  cost $8.26  last: Loop B=3 OK_SOLVED
+22:19:48 [progress] 875/2340  cost $8.30  last: Loop B=12 OK_SOLVED
+22:19:55 [progress] 900/2340  cost $8.34  last: Loop B=3 OK_SOLVED
+22:20:02 [progress] 925/2340  cost $8.38  last: BudgetAware B=6 OK_SOLVED
+22:20:09 [progress] 950/2340  cost $8.41  last: BudgetAware B=3 OK_SOLVED
+22:20:15 [progress] 975/2340  cost $8.44  last: BudgetAware B=6 OK_SOLVED
+22:20:22 [progress] 1000/2340  cost $8.48  last: BudgetAware B=3 OK_SOLVED
+22:20:29 [progress] 1025/2340  cost $8.52  last: BudgetAwareRead B=6 OK_SOLVED
+22:20:37 [progress] 1050/2340  cost $8.56  last: BudgetAwareRead B=12 OK_SOLVED
+22:20:44 [progress] 1075/2340  cost $8.61  last: BudgetAwareRead B=3 OK_SOLVED
+22:20:51 [progress] 1100/2340  cost $8.65  last: BudgetAwareRead B=12 OK_SOLVED
+22:21:01 [progress] 1125/2340  cost $8.69  last: Loop B=12 OK_SOLVED
+22:21:13 [progress] 1150/2340  cost $8.76  last: BudgetAwareRead B=3 OK_SOLVED
+22:21:25 [progress] 1175/2340  cost $8.82  last: BudgetAware B=12 OK_SOLVED
+22:21:35 [progress] 1200/2340  cost $8.89  last: SingleShot B=0 INVALID_FORMAT
+22:21:47 [progress] 1225/2340  cost $8.94  last: Loop B=12 OK_SOLVED
+22:21:59 [progress] 1250/2340  cost $9.00  last: BudgetAwareRead B=3 OK_SOLVED
+22:22:10 [progress] 1275/2340  cost $9.06  last: Loop B=12 OK_SOLVED
+22:22:20 [progress] 1300/2340  cost $9.12  last: BudgetAwareRead B=12 OK_SOLVED
+22:22:26 [progress] 1325/2340  cost $9.16  last: BudgetAwareRead B=12 OK_SOLVED
+22:22:32 [progress] 1350/2340  cost $9.20  last: BudgetAwareRead B=12 OK_SOLVED
+22:22:39 [progress] 1375/2340  cost $9.23  last: BudgetAwareRead B=6 OK_SOLVED
+22:22:49 [progress] 1400/2340  cost $9.26  last: BudgetAware B=6 OK_SOLVED
+22:22:56 [progress] 1425/2340  cost $9.33  last: BudgetAwareRead B=6 OK_SOLVED
+22:23:06 [progress] 1450/2340  cost $9.38  last: SingleShot B=0 INVALID_FORMAT
+22:23:17 [progress] 1475/2340  cost $9.43  last: Loop B=12 OK_SOLVED
+22:23:26 [progress] 1500/2340  cost $9.48  last: BudgetAwareRead B=3 OK_SOLVED
+22:23:36 [progress] 1525/2340  cost $9.53  last: BudgetAware B=12 OK_SOLVED
+22:23:44 [progress] 1550/2340  cost $9.58  last: BudgetAware B=3 OK_SOLVED
+22:23:53 [progress] 1575/2340  cost $9.63  last: BudgetAwareRead B=6 OK_SOLVED
+22:24:01 [progress] 1600/2340  cost $9.68  last: BudgetAwareRead B=3 OK_SOLVED
+22:24:06 [progress] 1625/2340  cost $9.71  last: BudgetAware B=6 OK_SOLVED
+22:24:16 [progress] 1650/2340  cost $9.75  last: BudgetAwareRead B=3 OK_SOLVED
+22:24:26 [progress] 1675/2340  cost $9.80  last: BudgetAware B=12 OK_SOLVED
+22:24:37 [progress] 1700/2340  cost $9.86  last: BudgetAware B=3 OK_SOLVED
+22:24:47 [progress] 1725/2340  cost $9.91  last: Loop B=12 OK_SOLVED
+22:25:00 [progress] 1750/2340  cost $9.97  last: Loop B=6 OK_SOLVED
+22:25:12 [progress] 1775/2340  cost $10.03  last: Loop B=12 OK_SOLVED
+22:25:21 [progress] 1800/2340  cost $10.08  last: BudgetAwareRead B=3 OK_SOLVED
+22:25:37 [progress] 1825/2340  cost $10.15  last: BudgetAwareRead B=12 OK_SOLVED
+22:26:06 [progress] 1850/2340  cost $10.29  last: BudgetAwareRead B=12 WRONG_ANSWER
+22:26:30 [progress] 1875/2340  cost $10.43  last: BudgetAwareRead B=12 ABSTAINED
+22:27:00 [progress] 1900/2340  cost $10.60  last: BudgetAwareRead B=3 OK_SOLVED
+22:27:28 [progress] 1925/2340  cost $10.75  last: SingleShot B=0 INVALID_FORMAT
+22:27:55 [progress] 1950/2340  cost $10.89  last: SingleShot B=0 INVALID_FORMAT
+22:28:33 [progress] 1975/2340  cost $11.08  last: Loop B=6 OK_SOLVED
+22:28:56 [progress] 2000/2340  cost $11.19  last: Loop B=6 OK_SOLVED
+22:29:26 [progress] 2025/2340  cost $11.35  last: BudgetAware B=6 ABSTAINED
+22:29:56 [progress] 2050/2340  cost $11.49  last: Loop B=6 OK_SOLVED
+22:30:20 [progress] 2075/2340  cost $11.63  last: BudgetAware B=6 OK_SOLVED
+22:31:13 [progress] 2100/2340  cost $11.89  last: BudgetAwareRead B=3 OK_SOLVED
+22:32:11 [progress] 2125/2340  cost $12.20  last: BudgetAwareRead B=12 OK_SOLVED
+22:33:01 [progress] 2150/2340  cost $12.45  last: BudgetAware B=3 OK_SOLVED
+22:33:56 [progress] 2175/2340  cost $12.76  last: BudgetAware B=6 OK_SOLVED
+22:34:49 [progress] 2200/2340  cost $13.02  last: SingleShot B=0 INVALID_FORMAT
+22:35:42 [progress] 2225/2340  cost $13.28  last: SingleShot B=0 INVALID_FORMAT
+22:36:44 [progress] 2250/2340  cost $13.57  last: BudgetAware B=12 OK_SOLVED
+22:37:32 [progress] 2275/2340  cost $13.89  last: BudgetAwareRead B=3 OK_SOLVED
+22:38:27 [progress] 2300/2340  cost $14.15  last: SingleShot B=0 INVALID_FORMAT
+22:39:19 [progress] 2325/2340  cost $14.40  last: BudgetAware B=12 OK_SOLVED
+22:39:57 [summary] {'BudgetAware:ABSTAINED': 125, 'BudgetAware:INVALID_FORMAT': 2, 'BudgetAware:OK_SOLVED': 383, 'BudgetAware:WRONG_ANSWER': 30, 'BudgetAwareRead:ABSTAINED': 177, 'BudgetAwareRead:INVALID_FORMAT': 6, 'BudgetAwareRead:OK_SOLVED': 832, 'BudgetAwareRead:WRONG_ANSWER': 65, 'Loop:ABSTAINED': 75, 'Loop:BUDGET_EXCEEDED': 49, 'Loop:INVALID_FORMAT': 4, 'Loop:OK_SOLVED': 383, 'Loop:WRONG_ANSWER': 29, 'SingleShot:INVALID_FORMAT': 179, 'SingleShot:OK_SOLVED': 1}
+22:39:57 [cost] estimated total $14.58 (list price, Gemini 2.5 Flash)
+22:39:57 [exit] all workers finished; the process will now exit.
+23:43:44 [auth] Gemini API key (GEMINI_API_KEY)
+23:43:44 [plan] 3 questions, budgets [6], model gemini-2.5-flash, thinking_budget 1024, cost cap $20.00
+23:43:44 [resume] 0 episodes already done, 12 to run, $0.00 spent so far
+23:43:44 [estimate] 12 episodes; rough cost a few cents, hard cap $20.00
+23:43:53 [progress] 1/12  cost $0.00  last: SingleShot B=0 INVALID_FORMAT
+23:44:09 [progress] 2/12  cost $0.01  last: Loop B=6 WRONG_ANSWER
+23:44:26 [progress] 3/12  cost $0.02  last: BudgetAware B=6 OK_SOLVED
+23:44:43 [progress] 4/12  cost $0.03  last: BudgetAwareRead B=6 OK_SOLVED
+23:44:52 [progress] 5/12  cost $0.04  last: SingleShot B=0 INVALID_FORMAT
+23:45:11 [progress] 6/12  cost $0.05  last: Loop B=6 BUDGET_EXCEEDED
+23:45:23 [progress] 7/12  cost $0.06  last: BudgetAware B=6 ABSTAINED
+23:45:38 [progress] 8/12  cost $0.07  last: BudgetAwareRead B=6 WRONG_ANSWER
+23:45:45 [progress] 9/12  cost $0.07  last: SingleShot B=0 INVALID_FORMAT
+23:45:52 [progress] 10/12  cost $0.07  last: Loop B=6 OK_SOLVED
+23:46:00 [progress] 11/12  cost $0.08  last: BudgetAware B=6 OK_SOLVED
+23:46:08 [progress] 12/12  cost $0.08  last: BudgetAwareRead B=6 OK_SOLVED
+23:46:08 [summary] {'BudgetAware:ABSTAINED': 1, 'BudgetAware:OK_SOLVED': 2, 'BudgetAwareRead:OK_SOLVED': 2, 'BudgetAwareRead:WRONG_ANSWER': 1, 'Loop:BUDGET_EXCEEDED': 1, 'Loop:OK_SOLVED': 1, 'Loop:WRONG_ANSWER': 1, 'SingleShot:INVALID_FORMAT': 3}
+23:46:08 [cost] estimated total $0.08 (list price, Gemini 2.5 Flash)
+23:46:08 [exit] all workers finished; the process will now exit.
+23:46:09 [auth] Gemini API key (GEMINI_API_KEY)
+23:46:09 [plan] 108 questions, budgets [3, 6, 12], model gemini-2.5-flash, thinking_budget 1024, cost cap $12.00
+23:46:09 [resume] 0 episodes already done, 1080 to run, $0.00 spent so far
+23:46:09 [estimate] projected cost for 1080 episodes: about $8.01 (from the smoke test; real runs vary), hard cap $12.00
+23:46:53 [progress] 25/1080  cost $0.18  last: BudgetAware B=6 OK_SOLVED
+23:47:26 [progress] 50/1080  cost $0.32  last: SingleShot B=0 INVALID_FORMAT
+23:48:11 [progress] 75/1080  cost $0.52  last: Loop B=12 OK_SOLVED
+23:57:25 [progress] 100/1080  cost $0.63  last: BudgetAwareRead B=12 API_ERROR
+23:58:04 [summary] {'BudgetAware:ABSTAINED': 10, 'BudgetAware:API_ERROR': 3, 'BudgetAware:OK_SOLVED': 12, 'BudgetAware:WRONG_ANSWER': 5, 'BudgetAwareRead:ABSTAINED': 2, 'BudgetAwareRead:API_ERROR': 5, 'BudgetAwareRead:OK_SOLVED': 15, 'BudgetAwareRead:WRONG_ANSWER': 8, 'Loop:ABSTAINED': 4, 'Loop:API_ERROR': 3, 'Loop:BUDGET_EXCEEDED': 10, 'Loop:OK_SOLVED': 11, 'Loop:WRONG_ANSWER': 2, 'SingleShot:API_ERROR': 1, 'SingleShot:INVALID_FORMAT': 10}
+23:58:04 [cost] estimated total $0.63 (list price, Gemini 2.5 Flash)
+23:58:04 [stopped early] 5 API errors in a row (last: ClientError: 402 RESOURCE_EXHAUSTED. {'error': {'code': 402, 'message': 'Your prepayment credits are depleted. Please go to AI Studio at https://ai.studio/projects to manage your project and billing. Learn more at https://ai.google.dev/gemini-api/docs/billing#prepay. ', 'status': 'RESOURCE_EXHAUSTED)
+23:58:04 [exit] all workers finished; the process will now exit.

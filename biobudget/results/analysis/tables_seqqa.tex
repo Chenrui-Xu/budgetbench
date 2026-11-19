@@ -1,0 +1,49 @@
+\begin{table}[t]
+\centering
+\caption[BioBudget pilot results]{BioBudget results on LAB-Bench SeqQA (Gemini 2.5 Flash, 360 questions per row). Success, coverage, precision, abstention and violation in \%; Success@B with 95\% bootstrap CI. Units = mean budget units spent; calls = mean LLM calls; tokens = mean input+output+thinking tokens (thousands); cost in US cents at list price, per episode and per correct answer. SingleShot uses no tools and does not depend on $B$.}
+\label{tab:bioresults}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcccccccccccc}
+\toprule
+Agent & $B$ & Success@B & Cov. & Prec. & Abst. & Viol. & AUC & Units & Calls & kTok & \textcent/ep & \textcent/correct \\
+\midrule
+SingleShot & -- & 23.9 [19.4, 28.1] & 37.2 & 64.2 & 2.2 & 0.0 & 0.239 & 0.00 & 1.00 & 4.2 & 0.88 & 3.69 \\
+\addlinespace
+Loop & 3 & 66.9 [61.7, 71.4] & 71.7 & 93.4 & 13.6 & 14.2 & 0.326 & 1.99 & 2.26 & 4.0 & 0.29 & 0.44 \\
+Loop & 6 & 71.9 [67.2, 76.4] & 76.4 & 94.2 & 14.2 & 8.6 & 0.499 & 2.41 & 2.60 & 4.8 & 0.38 & 0.52 \\
+Loop & 12 & 75.6 [70.8, 79.7] & 79.2 & 95.4 & 14.7 & 4.7 & 0.623 & 2.83 & 2.92 & 5.7 & 0.46 & 0.61 \\
+\addlinespace
+BudgetAware & 3 & 59.7 [54.7, 64.7] & 61.7 & 96.8 & 38.3 & 0.0 & 0.341 & 1.97 & 1.80 & 2.9 & 0.21 & 0.35 \\
+BudgetAware & 6 & 75.3 [70.6, 79.2] & 83.9 & 89.7 & 15.8 & 0.0 & 0.508 & 2.33 & 2.43 & 4.6 & 0.36 & 0.48 \\
+BudgetAware & 12 & 77.8 [73.6, 81.9] & 85.3 & 91.2 & 14.2 & 0.0 & 0.648 & 2.47 & 2.60 & 5.0 & 0.38 & 0.49 \\
+\addlinespace
+BudgetAware+Read & 3 & 77.2 [73.1, 81.4] & 80.8 & 95.5 & 19.2 & 0.0 & 0.342 & 1.98 & 2.27 & 4.1 & 0.32 & 0.41 \\
+BudgetAware+Read & 6 & 77.5 [73.1, 81.4] & 83.9 & 92.4 & 15.3 & 0.0 & 0.522 & 2.27 & 2.49 & 4.7 & 0.37 & 0.48 \\
+BudgetAware+Read & 12 & 76.4 [71.9, 80.6] & 84.4 & 90.5 & 14.7 & 0.0 & 0.630 & 2.54 & 2.69 & 5.2 & 0.40 & 0.53 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption[BioBudget success by subtask]{Success@B by subtask (\%, 40 questions per cell). SS = SingleShot; L$B$, BA$B$, R$B$ = LoopAgent, BudgetAwareAgent, and BudgetAware+Read at budget $B$.}
+\label{tab:biosub}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lcccccccccc}
+\toprule
+Subtask & SS & L3 & L6 & L12 & BA3 & BA6 & BA12 & R3 & R6 & R12 \\
+\midrule
+ORF-seq-AAid & 8 & 55 & 60 & 57 & 0 & 62 & 50 & 52 & 65 & 48 \\
+ORF-seq-AAseq & 30 & 52 & 45 & 57 & 0 & 50 & 65 & 55 & 52 & 55 \\
+ORF-seq-numlen & 2 & 22 & 22 & 20 & 0 & 18 & 22 & 20 & 18 & 20 \\
+PCR-len-primers & 20 & 57 & 65 & 68 & 42 & 57 & 65 & 70 & 70 & 70 \\
+PCR-primers-len & 2 & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 \\
+PCR-seq-primers & 75 & 18 & 57 & 80 & 98 & 92 & 100 & 98 & 95 & 98 \\
+Prop-seq-gcpercent & 60 & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 \\
+RE-seq-lenfrags & 0 & 98 & 98 & 98 & 98 & 98 & 98 & 100 & 98 & 98 \\
+RE-seq-numfrags & 18 & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 \\
+\bottomrule
+\end{tabular}
+\end{table}
