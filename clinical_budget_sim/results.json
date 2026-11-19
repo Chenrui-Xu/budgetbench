@@ -1,0 +1,514 @@
+{
+ "SingleShot": {
+  "6": {
+   "success": 0.354,
+   "unsafe_write": 0.646,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.295,
+   "mean_cost": 1.0,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    0.325,
+    0.384
+   ],
+   "unsafe_ci": [
+    0.616,
+    0.676
+   ]
+  },
+  "8": {
+   "success": 0.354,
+   "unsafe_write": 0.646,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.30975,
+   "mean_cost": 1.0,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    0.326,
+    0.384
+   ],
+   "unsafe_ci": [
+    0.615,
+    0.677
+   ]
+  },
+  "10": {
+   "success": 0.354,
+   "unsafe_write": 0.646,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.3186,
+   "mean_cost": 1.0,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    0.325,
+    0.383
+   ],
+   "unsafe_ci": [
+    0.615,
+    0.677
+   ]
+  },
+  "12": {
+   "success": 0.354,
+   "unsafe_write": 0.646,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.3245,
+   "mean_cost": 1.0,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    0.326,
+    0.384
+   ],
+   "unsafe_ci": [
+    0.616,
+    0.676
+   ]
+  },
+  "16": {
+   "success": 0.354,
+   "unsafe_write": 0.646,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.331875,
+   "mean_cost": 1.0,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    0.323,
+    0.383
+   ],
+   "unsafe_ci": [
+    0.619,
+    0.676
+   ]
+  },
+  "20": {
+   "success": 0.354,
+   "unsafe_write": 0.646,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.3363,
+   "mean_cost": 1.0,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    0.324,
+    0.385
+   ],
+   "unsafe_ci": [
+    0.616,
+    0.679
+   ]
+  },
+  "24": {
+   "success": 0.354,
+   "unsafe_write": 0.646,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.33925,
+   "mean_cost": 1.0,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    0.324,
+    0.383
+   ],
+   "unsafe_ci": [
+    0.615,
+    0.674
+   ]
+  }
+ },
+ "Loop": {
+  "6": {
+   "success": 0.0,
+   "unsafe_write": 0.0,
+   "violation": 1.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.0,
+   "mean_cost": 6.0,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    0.0,
+    0.0
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "8": {
+   "success": 0.0,
+   "unsafe_write": 0.0,
+   "violation": 1.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.0,
+   "mean_cost": 8.0,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    0.0,
+    0.0
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "10": {
+   "success": 0.0,
+   "unsafe_write": 0.0,
+   "violation": 1.0,
+   "h_violation": 0.399,
+   "handoff": 0.0,
+   "auc": 0.0,
+   "mean_cost": 9.812,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    0.0,
+    0.0
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "12": {
+   "success": 0.188,
+   "unsafe_write": 0.0,
+   "violation": 0.812,
+   "h_violation": 0.615,
+   "handoff": 0.0,
+   "auc": 0.0,
+   "mean_cost": 11.375,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    0.164,
+    0.21
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "16": {
+   "success": 1.0,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.1245,
+   "mean_cost": 14.008,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    1.0,
+    1.0
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "20": {
+   "success": 1.0,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.2996,
+   "mean_cost": 14.008,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    1.0,
+    1.0
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "24": {
+   "success": 1.0,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.41633333333333333,
+   "mean_cost": 14.008,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    1.0,
+    1.0
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "BudgetAware": {
+  "6": {
+   "success": 0.453,
+   "unsafe_write": 0.547,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.0755,
+   "mean_cost": 5.0,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    0.423,
+    0.483
+   ],
+   "unsafe_ci": [
+    0.515,
+    0.577
+   ]
+  },
+  "8": {
+   "success": 0.504,
+   "unsafe_write": 0.496,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.126,
+   "mean_cost": 6.0,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    0.473,
+    0.536
+   ],
+   "unsafe_ci": [
+    0.465,
+    0.527
+   ]
+  },
+  "10": {
+   "success": 0.595,
+   "unsafe_write": 0.405,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.1785,
+   "mean_cost": 7.0,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    0.562,
+    0.626
+   ],
+   "unsafe_ci": [
+    0.372,
+    0.436
+   ]
+  },
+  "12": {
+   "success": 0.824,
+   "unsafe_write": 0.176,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.206,
+   "mean_cost": 9.0,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    0.801,
+    0.848
+   ],
+   "unsafe_ci": [
+    0.153,
+    0.2
+   ]
+  },
+  "16": {
+   "success": 1.0,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.3243125,
+   "mean_cost": 10.811,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    1.0,
+    1.0
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "20": {
+   "success": 1.0,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.4496,
+   "mean_cost": 11.008,
+   "signed_unverified": 1.0,
+   "success_ci": [
+    1.0,
+    1.0
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "24": {
+   "success": 1.0,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.5178333333333334,
+   "mean_cost": 11.572,
+   "signed_unverified": 0.812,
+   "success_ci": [
+    1.0,
+    1.0
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "ClinicalBudgetAware": {
+  "6": {
+   "success": 0.505,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.495,
+   "auc": 0.0,
+   "mean_cost": 6.0,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    0.473,
+    0.536
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "8": {
+   "success": 0.695,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.305,
+   "auc": 0.0,
+   "mean_cost": 8.0,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    0.667,
+    0.723
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "10": {
+   "success": 0.798,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.202,
+   "auc": 0.017,
+   "mean_cost": 9.83,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    0.772,
+    0.823
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "12": {
+   "success": 0.901,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.099,
+   "auc": 0.08758333333333333,
+   "mean_cost": 10.949,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    0.883,
+    0.92
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "16": {
+   "success": 1.0,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.277875,
+   "mean_cost": 11.554,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    1.0,
+    1.0
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "20": {
+   "success": 1.0,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.4223,
+   "mean_cost": 11.554,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    1.0,
+    1.0
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "24": {
+   "success": 1.0,
+   "unsafe_write": 0.0,
+   "violation": 0.0,
+   "h_violation": 0.0,
+   "handoff": 0.0,
+   "auc": 0.5185833333333333,
+   "mean_cost": 11.554,
+   "signed_unverified": 0.0,
+   "success_ci": [
+    1.0,
+    1.0
+   ],
+   "unsafe_ci": [
+    0.0,
+    0.0
+   ]
+  }
+ }
+}
