@@ -18,6 +18,10 @@ results/*.csv
 # Experiment runtime junk
 logs/
 budgetbench-env.budgetbench_*.json
+results/batch_test/
+results/e2e_test/
+texput.log
+paper/overleaf_upload/
 
 # LaTeX build artifacts
 paper/*.aux

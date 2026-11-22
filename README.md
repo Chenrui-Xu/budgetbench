@@ -4,6 +4,7 @@
 
 > CMU 24-880 AI Agents for Engineers · Spring 2026
 > Team: Chenrui Xu · Hanyu Jin · Sylvia Li
+> Course Report: [PDF](https://chenrui-xu.github.io/assets/research/budgetbench-course-report-2026.pdf) · Repository: [Chenrui-Xu/budgetbench](https://github.com/Chenrui-Xu/budgetbench)
 
 ---
 
@@ -28,7 +29,7 @@ that solves the same problem in 15 calls, because it succeeds at every budget le
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/Eric-XC/budgetbench.git
+git clone https://github.com/Chenrui-Xu/budgetbench.git
 cd budgetbench
 pip install -e ".[dev]"
 
@@ -206,4 +207,20 @@ All merges to `main` require a PR + approval from Chenrui.
 
 ---
 
-*Last updated: 2026-04-05*
+## Citation
+
+If you use BudgetBench in your work, please cite the course project report:
+
+```bibtex
+@misc{xu2026budgetbench,
+  author       = {Xu, Chenrui and Jin, Hanyu and Li, Sylvia},
+  title        = {BudgetBench: A Budget-Constrained Evaluation Harness for Tool-Using Code Agents},
+  year         = {2026},
+  howpublished = {Carnegie Mellon University, 24-880 AI Agents for Engineers (Spring 2026)},
+  url          = {https://github.com/Chenrui-Xu/budgetbench}
+}
+```
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
